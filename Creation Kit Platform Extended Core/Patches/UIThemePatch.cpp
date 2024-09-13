@@ -902,10 +902,7 @@ namespace CreationKitPlatformExtended
 						if (themeType == ThemeType::ListView) {
 							// To colorize the list of mods, WM_NOTIFY calls prevent me.
 							// It's strange, but to change the color of the text from black to light in standard CK windows with properties, WM_NOTIFY is needed.
-							if (nmhdr->idFrom != EditorAPI::EditorUI::UI_DATA_DIALOG_PLUGINLISTVIEW)
-								return UITheme::ListView::OnCustomDraw(hWnd, (LPNMLVCUSTOMDRAW)lParam);
-							else
-								return CDRF_DODEFAULT;
+							return CDRF_DODEFAULT;
 						}
 						else if (themeType == ThemeType::ToolBar)
 							return UITheme::ToolBar::OnCustomDraw(hWnd, (LPNMTBCUSTOMDRAW)lParam);
