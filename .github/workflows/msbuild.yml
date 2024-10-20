@@ -7,9 +7,9 @@ name: MSBuild
 
 on:
   push:
-    branches: [ "github-actions" ]
+    branches: [ "github-actions-1" ]
   pull_request:
-    branches: [ "github-actions" ]
+    branches: [ "github-actions-1" ]
 
 env:
   # Path to the solution file relative to the root of the project.
