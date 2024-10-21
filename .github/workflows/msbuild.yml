@@ -40,10 +40,6 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
 
-    - name: Restore NuGet packages
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
-
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
@@ -61,6 +57,14 @@ jobs:
     - name: Copy Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: Copy-Item -Path Database\SF\${{env.SF_VERSION}}\*.database "ckpe-starfield-${{env.SHORT_SHA}}"
+
+    - name: Copy Dialog
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Copy-Item -Path Dialogs\*.pak "ckpe-starfield-${{env.SHORT_SHA}}"
+
+    - name: Copy Stuff
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Get-ChildItem -Path .\Stuffs -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
