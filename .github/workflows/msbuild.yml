@@ -62,8 +62,12 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: Copy-Item -Path Database\SF\${{env.SF_VERSION}}\*.database "ckpe-starfield-${{env.SHORT_SHA}}"
 
+    - name: Copy CKPE
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Get-ChildItem -Path .\x64 -Recurse -Filter "*.exe", "*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
         name: ckpe-starfield-${{env.SF_VERSION}}-${{env.SHORT_SHA}}
-        path: ${{ env.Wap_Project_Directory }}\bin\Release\net8.0-windows
+        path: "ckpe-starfield-${{env.SHORT_SHA}}"
