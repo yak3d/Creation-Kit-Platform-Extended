@@ -64,7 +64,7 @@ jobs:
 
     - name: Copy Stuff
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\Stuffs -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\Stuffs\SF -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
