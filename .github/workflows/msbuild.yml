@@ -60,7 +60,7 @@ jobs:
 
     - name: Copy Dialog
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Copy-Item -Path Dialogs\*.pak "ckpe-starfield-${{env.SHORT_SHA}}"
+      run: Copy-Item -Path Dialogs\SF\*.pak "ckpe-starfield-${{env.SHORT_SHA}}"
 
     - name: Copy Stuff
       working-directory: ${{env.GITHUB_WORKSPACE}}
