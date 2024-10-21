@@ -64,7 +64,7 @@ jobs:
 
     - name: Copy CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\x64 -Recurse -Filter "*.exe", "*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
