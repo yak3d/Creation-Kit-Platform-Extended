@@ -77,7 +77,7 @@ jobs:
         name: ckpe-starfield-${{env.SF_VERSION}}-${{env.SHORT_SHA}}
         path: "ckpe-starfield-${{env.SHORT_SHA}}"
 
-  build-sse:
+  build-sse-and-fo4:
     runs-on: windows-latest
 
     steps:
