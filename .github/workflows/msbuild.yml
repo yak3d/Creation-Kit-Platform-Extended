@@ -18,14 +18,15 @@ env:
   # Configuration type to build.
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
   # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-  BUILD_CONFIGURATION: Release-Qt
+  BUILD_CONFIGURATION: Release
+  SF_BUILD_CONFIGURATION: Release-Qt
   SF_VERSION: 1_14_70_0
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  build-sf:
     runs-on: windows-latest
 
     steps:
@@ -44,7 +45,7 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.SF_BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
 
     - name: Make Bundle Directory
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -75,3 +76,84 @@ jobs:
       with:
         name: ckpe-starfield-${{env.SF_VERSION}}-${{env.SHORT_SHA}}
         path: "ckpe-starfield-${{env.SHORT_SHA}}"
+
+  build-sse:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    # gets the short sha to append it to the archive name
+    - name: Get short SHA
+      run: echo "SHORT_SHA=$("${{ github.sha }}".SubString(0, 8))" >> $env:GITHUB_ENV
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      # Add additional options to the MSBuild command line here (like platform or verbosity level).
+      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Make SSE Bundle Directory
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: New-Item -ItemType Directory -Path "ckpe-skyrimse-${{env.SHORT_SHA}}"
+    
+    - name: Make FO4 Bundle Directory
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: New-Item -ItemType Directory -Path "ckpe-fallout4-${{env.SHORT_SHA}}"
+
+    - name: Copy Voltek to SSE
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Copy-Item -Path x64\Release\*.dll "ckpe-skyrimse-${{env.SHORT_SHA}}"
+
+    - name: Copy Voltek to FO4
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Copy-Item -Path x64\Release\*.dll "ckpe-fallout4-${{env.SHORT_SHA}}"
+
+    - name: Copy SSE Database
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Copy-Item -Path Database\SSE\**\*.database "ckpe-skyrimse-${{env.SHORT_SHA}}"
+
+    - name: Copy FO4 Database
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Copy-Item -Path Database\FO4\**\*.database "ckpe-fallout4-${{env.SHORT_SHA}}"
+
+    - name: Copy SSE Dialog
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Copy-Item -Path Dialogs\SSE\*.pak "ckpe-skyrimse-${{env.SHORT_SHA}}"
+
+    - name: Copy FO4 Dialog
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Copy-Item -Path Dialogs\FO4\*.pak "ckpe-fallout4-${{env.SHORT_SHA}}"
+
+    - name: Copy SSE Stuff
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Get-ChildItem -Path .\Stuffs\SSE -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyimse-${{env.SHORT_SHA}}" $_.Name) -Force }
+
+    - name: Copy FO4 Stuff
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Get-ChildItem -Path .\Stuffs\FO4 -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
+
+    - name: Copy SSE CKPE
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
+
+    - name: Copy FO4 CKPE
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
+
+    - name: Upload SSE build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ckpe-skyrimse-${{env.SHORT_SHA}}
+        path: "ckpe-skyrimse-${{env.SHORT_SHA}}"
+        
+    - name: Upload FO4 build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ckpe-fallout4-${{env.SHORT_SHA}}
+        path: "ckpe-fallout4-${{env.SHORT_SHA}}"
