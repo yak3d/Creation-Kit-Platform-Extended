@@ -74,7 +74,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ckpe-starfield-${{env.SF_VERSION}}-${{env.SHORT_SHA}}
+        name: ckpe-starfield-${{env.SHORT_SHA}}.zip
         path: "ckpe-starfield-${{env.SHORT_SHA}}"
 
   build-sse-and-fo4:
@@ -90,7 +90,7 @@ jobs:
       run: echo "SHORT_SHA=$("${{ github.sha }}".SubString(0, 8))" >> $env:GITHUB_ENV
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -149,11 +149,11 @@ jobs:
     - name: Upload SSE build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ckpe-skyrimse-${{env.SHORT_SHA}}
+        name: ckpe-skyrimse-${{env.SHORT_SHA}}.zip
         path: "ckpe-skyrimse-${{env.SHORT_SHA}}"
         
     - name: Upload FO4 build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ckpe-fallout4-${{env.SHORT_SHA}}
+        name: ckpe-fallout4-${{env.SHORT_SHA}}.zip
         path: "ckpe-fallout4-${{env.SHORT_SHA}}"
