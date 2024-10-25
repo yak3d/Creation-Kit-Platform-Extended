@@ -39,7 +39,7 @@ jobs:
       run: echo "SHORT_SHA=$("${{ github.sha }}".SubString(0, 8))" >> $env:GITHUB_ENV
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -72,7 +72,7 @@ jobs:
       run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ckpe-starfield-${{env.SF_VERSION}}-${{env.SHORT_SHA}}
         path: "ckpe-starfield-${{env.SHORT_SHA}}"
@@ -147,13 +147,13 @@ jobs:
       run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Upload SSE build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ckpe-skyrimse-${{env.SHORT_SHA}}
         path: "ckpe-skyrimse-${{env.SHORT_SHA}}"
         
     - name: Upload FO4 build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ckpe-fallout4-${{env.SHORT_SHA}}
         path: "ckpe-fallout4-${{env.SHORT_SHA}}"
