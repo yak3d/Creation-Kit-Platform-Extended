@@ -132,7 +132,7 @@ jobs:
 
     - name: Copy SSE Stuff
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\Stuffs\SSE -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyimse-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\Stuffs\SSE -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy FO4 Stuff
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -140,7 +140,7 @@ jobs:
 
     - name: Copy SSE CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy FO4 CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
