@@ -74,7 +74,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ckpe-starfield-${{env.SHORT_SHA}}.zip
+        name: ckpe-starfield-${{env.SHORT_SHA}}
         path: "ckpe-starfield-${{env.SHORT_SHA}}"
 
   build-sse-and-fo4:
@@ -149,11 +149,11 @@ jobs:
     - name: Upload SSE build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ckpe-skyrimse-${{env.SHORT_SHA}}.zip
+        name: ckpe-skyrimse-${{env.SHORT_SHA}}
         path: "ckpe-skyrimse-${{env.SHORT_SHA}}"
         
     - name: Upload FO4 build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ckpe-fallout4-${{env.SHORT_SHA}}.zip
+        name: ckpe-fallout4-${{env.SHORT_SHA}}
         path: "ckpe-fallout4-${{env.SHORT_SHA}}"
