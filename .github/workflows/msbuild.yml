@@ -69,7 +69,7 @@ jobs:
 
     - name: Copy CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\x64 -Recurse -Include "ckpe_loader.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -140,11 +140,11 @@ jobs:
 
     - name: Copy SSE CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\x64 -Recurse -Include "ckpe_loader.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy FO4 CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\x64 -Recurse -Include "*.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\x64 -Recurse -Include "ckpe_loader.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Upload SSE build artifacts
       uses: actions/upload-artifact@v4
