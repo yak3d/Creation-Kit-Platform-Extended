@@ -65,7 +65,7 @@ jobs:
 
     - name: Copy Stuff
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\Stuffs\SF -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\Stuffs\SF -Recurse | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -132,11 +132,11 @@ jobs:
 
     - name: Copy SSE Stuff
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\Stuffs\SSE -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\Stuffs\SSE -Recurse | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy FO4 Stuff
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\Stuffs\FO4 -Recurse -Include "*.ini","*.txt" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\Stuffs\FO4 -Recurse | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy SSE CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
