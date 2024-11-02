@@ -20,7 +20,9 @@ env:
   # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
   BUILD_CONFIGURATION: Release
   SF_BUILD_CONFIGURATION: Release-Qt
-  SF_VERSION: 1_14_70_0
+  SF_DBS: 1_14_70_0\CreationKitPlatformExtended_SF_1_14_70_0.database
+  SSE_DBS: 1_5_3\CreationKitPlatformExtended_SSE_1_5_3.database,1_5_73\CreationKitPlatformExtended_SSE_1_5_73.database,1_6_438\CreationKitPlatformExtended_SSE_1_6_438.database,1_6_1130\CreationKitPlatformExtended_SSE_1_6_1130.database
+  FO4_DBS: 1_10_162_0\CreationKitPlatformExtended_FO4_1_10_162.database,1_10_982_3\CreationKitPlatformExtended_FO4_1_10_982_3.database
 
 permissions:
   contents: read
@@ -53,11 +55,11 @@ jobs:
 
     - name: Copy Voltek
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Copy-Item -Path x64\Release\*.dll "ckpe-starfield-${{env.SHORT_SHA}}"
+      run: Copy-Item -Path x64\Release\Voltek*.dll "ckpe-starfield-${{env.SHORT_SHA}}"
 
     - name: Copy Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Copy-Item -Path Database\SF\${{env.SF_VERSION}}\*.database "ckpe-starfield-${{env.SHORT_SHA}}"
+      run: Get-ChildItem -Path Database\SF -Include ${{ SF_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
 
     - name: Copy Dialog
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -108,19 +110,19 @@ jobs:
 
     - name: Copy Voltek to SSE
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Copy-Item -Path x64\Release\*.dll "ckpe-skyrimse-${{env.SHORT_SHA}}"
+      run: Copy-Item -Path x64\Release\Voltek*.dll "ckpe-skyrimse-${{env.SHORT_SHA}}"
 
     - name: Copy Voltek to FO4
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Copy-Item -Path x64\Release\*.dll "ckpe-fallout4-${{env.SHORT_SHA}}"
+      run: Copy-Item -Path x64\Release\Voltek*.dll "ckpe-fallout4-${{env.SHORT_SHA}}"
 
     - name: Copy SSE Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Copy-Item -Path Database\SSE\**\*.database "ckpe-skyrimse-${{env.SHORT_SHA}}"
+      run: Get-ChildItem -Path Database\SF -Include ${{ SSE_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
 
     - name: Copy FO4 Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Copy-Item -Path Database\FO4\**\*.database "ckpe-fallout4-${{env.SHORT_SHA}}"
+      run: Get-ChildItem -Path Database\SF -Include ${{ FO4_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
 
     - name: Copy SSE Dialog
       working-directory: ${{env.GITHUB_WORKSPACE}}
