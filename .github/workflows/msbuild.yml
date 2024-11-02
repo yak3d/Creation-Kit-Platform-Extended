@@ -59,7 +59,7 @@ jobs:
 
     - name: Copy Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path Database\SF -Include ${{ SF_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
+      run: Get-ChildItem -Path Database\SF -Include ${{ env.SF_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
 
     - name: Copy Dialog
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -118,11 +118,11 @@ jobs:
 
     - name: Copy SSE Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path Database\SF -Include ${{ SSE_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
+      run: Get-ChildItem -Path Database\SF -Include ${{ env.SSE_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
 
     - name: Copy FO4 Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path Database\SF -Include ${{ FO4_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
+      run: Get-ChildItem -Path Database\SF -Include ${{ env.FO4_DBS }} "ckpe-starfield-${{env.SHORT_SHA}}"
 
     - name: Copy SSE Dialog
       working-directory: ${{env.GITHUB_WORKSPACE}}
