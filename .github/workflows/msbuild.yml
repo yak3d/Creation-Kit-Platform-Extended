@@ -59,7 +59,7 @@ jobs:
 
     - name: Copy Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path Database\SF -Include ${{ env.SF_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Recurse -Path Database\SF -Include ${{ env.SF_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-starfield-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy Dialog
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -118,11 +118,11 @@ jobs:
 
     - name: Copy SSE Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path Database\SF -Include ${{ env.SSE_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Recurse -Path Database\SF -Include ${{ env.SSE_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy FO4 Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path Database\SF -Include ${{ env.FO4_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Recurse -Path Database\SF -Include ${{ env.FO4_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy SSE Dialog
       working-directory: ${{env.GITHUB_WORKSPACE}}
