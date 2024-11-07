@@ -118,11 +118,11 @@ jobs:
 
     - name: Copy SSE Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Recurse -Path Database\SF -Include ${{ env.SSE_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Recurse -Path Database\SSE -Include ${{ env.SSE_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy FO4 Database
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Recurse -Path Database\SF -Include ${{ env.FO4_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Recurse -Path Database\FO4 -Include ${{ env.FO4_DBS }} | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy SSE Dialog
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -142,11 +142,11 @@ jobs:
 
     - name: Copy SSE CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\x64 -Recurse -Include "ckpe_loader.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\x64 -Include "ckpe_loader.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-skyrimse-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Copy FO4 CKPE
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Get-ChildItem -Path .\x64 -Recurse -Include "ckpe_loader.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
+      run: Get-ChildItem -Path .\x64 -Include "ckpe_loader.exe","*.dll" | ForEach-Object { Copy-Item -Path $_.FullName -Destination (Join-Path "ckpe-fallout4-${{env.SHORT_SHA}}" $_.Name) -Force }
 
     - name: Upload SSE build artifacts
       uses: actions/upload-artifact@v4
