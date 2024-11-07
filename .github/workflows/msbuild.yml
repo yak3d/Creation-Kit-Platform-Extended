@@ -159,3 +159,8 @@ jobs:
       with:
         name: ckpe-fallout4-${{env.SHORT_SHA}}
         path: "ckpe-fallout4-${{env.SHORT_SHA}}"
+    - name: Upload entire dir
+      uses: actions/upload-artifact@v4
+      with:
+        name: ssefo4build
+        path: "./"
