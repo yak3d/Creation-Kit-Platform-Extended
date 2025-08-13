@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-Qt|x64">
+      <Configuration>Debug-Qt</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release-Qt|x64">
       <Configuration>Release-Qt</Configuration>
       <Platform>x64</Platform>
@@ -33,6 +37,13 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Qt|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -44,6 +55,9 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-Qt|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Qt|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -53,6 +67,13 @@
     <IncludePath>$(SolutionDir)Dependencies\DirectXTex\include;$(SolutionDir)Dependencies\Voltek\Detours\include;$(SolutionDir)Dependencies\zydis\msvc;$(SolutionDir)Dependencies\zydis\include;$(SolutionDir)Dependencies\libdeflate;$(SolutionDir)Dependencies\libps;$(SolutionDir)Dependencies\xbyak;$(SolutionDir)Dependencies\jDialogs\include;$(SolutionDir)Dependencies\Voltek\Memory Manager\include;$(SolutionDir)Dependencies\Voltek\UnicodeConverter\include;$(SolutionDir)Dependencies\Voltek\Relocation Database\include;$(SolutionDir)Dependencies\imgui;$(SolutionDir)Dependencies\iw;$(SolutionDir)Dependencies\toml11\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Qt|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
+    <TargetName>winhttp</TargetName>
+    <IncludePath>$(SolutionDir)Dependencies\DirectXTex\include;$(SolutionDir)Dependencies\Voltek\Detours\include;$(SolutionDir)Dependencies\qt5;$(SolutionDir)Dependencies\zydis\msvc;$(SolutionDir)Dependencies\zydis\include;$(SolutionDir)Dependencies\libdeflate;$(SolutionDir)Dependencies\xbyak;$(SolutionDir)Dependencies\jDialogs\include;$(SolutionDir)Dependencies\Voltek\Memory Manager\include;$(SolutionDir)Dependencies\Voltek\UnicodeConverter\include;$(SolutionDir)Dependencies\Voltek\Relocation Database\include;$(SolutionDir)Dependencies\imgui;$(SolutionDir)Dependencies\iw;$(SolutionDir)Dependencies\toml11\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Qt|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
@@ -119,12 +140,54 @@
       <CompileAsWinRT>false</CompileAsWinRT>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <DebugInformationFormat>None</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
+      <EnableUAC>false</EnableUAC>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Dependencies\DirectXTex\lib;$(SolutionDir)$(Platform)\$(Configuration)\;$(SolutionDir)$(Platform)\;$(SolutionDir)\Dependencies\qt5\lib;$(SolutionDir)$(Platform)\Release\;$(SolutionDir)Dependencies\curl\lib;$(VSInstallDir)DIA SDK\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;msimg32.lib;uxtheme.lib;version.lib;shlwapi.lib;libzip.lib;libzydis.lib;libdeflate.lib;comctl32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;gdiplus.lib;DirectXTex.lib;Qt5Core.lib;Qt5Gui.lib;Qt5Widgets.lib;VoltekLib.Detours.lib;VoltekLib.UnicodeConverter.lib;VoltekLib.MemoryManager.lib;VoltekLib.RelocationDatabase.lib;ImGUI.lib;diaguids.lib;dwmapi.lib;Toml.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>powershell -ExecutionPolicy Bypass -File "$(SolutionDir)$(ProjectName)\Version\scripts.ps1"</Command>
+    </PreBuildEvent>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+      <ObjectFileOutput>$(SolutionDir)Resources\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Qt|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;ZYDIS_STATIC_DEFINE;CREATIOKITPLATFORMEXTENDEDCORE_EXPORTS;_WINDOWS;_USRDLL;XBYAK_NO_OP_NAMES;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;JDIALOG_NO_MANIFEST_LINKER_COMMCTRL;NOMINMAX;_CKPE_MAIN;_CKPE_WITH_QT5;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <CallingConvention>StdCall</CallingConvention>
+      <ForcedIncludeFiles>Common.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>$(SolutionDir)Creation Kit Platform Extended Core\;$(SolutionDir)Dependencies\mzip\src;$(SolutionDir)Dependencies\PropertyGrid;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalLibraryDirectories>$(SolutionDir)\Dependencies\DirectXTex\lib;$(SolutionDir)$(Platform)\$(Configuration)\;$(SolutionDir)$(Platform)\;$(SolutionDir)\Dependencies\qt5\lib;$(SolutionDir)$(Platform)\Release\;$(SolutionDir)Dependencies\curl\lib;$(VSInstallDir)DIA SDK\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;msimg32.lib;uxtheme.lib;version.lib;shlwapi.lib;libzip.lib;libzydis.lib;libdeflate.lib;comctl32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;gdiplus.lib;DirectXTex.lib;Qt5Core.lib;Qt5Gui.lib;Qt5Widgets.lib;VoltekLib.Detours.lib;VoltekLib.UnicodeConverter.lib;VoltekLib.MemoryManager.lib;VoltekLib.RelocationDatabase.lib;ImGUI.lib;diaguids.lib;dwmapi.lib;Toml.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -915,13 +978,16 @@
     <FxCompile Include="..\Shaders\FXAA_PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release-Qt|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug-Qt|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="..\Shaders\FXAA_VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release-Qt|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug-Qt|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="..\Shaders\TAA_PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release-Qt|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug-Qt|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
   </ItemGroup>
