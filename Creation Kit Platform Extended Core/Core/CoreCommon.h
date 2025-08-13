@@ -110,6 +110,7 @@ namespace CreationKitPlatformExtended
 			"Starfield [v1.14.74.0]",
 			"Starfield [v1.14.78.0]",
 			"Starfield [v1.15.216.0]",
+			"Starfield [v1.15.222.0]",
 		};
 
 		// Список имён файлов базы данных
@@ -127,6 +128,7 @@ namespace CreationKitPlatformExtended
 			{ EDITOR_STARFIELD_1_14_74_0,	"CreationKitPlatformExtended_SF_1_14_74_0.database"		},
 			{ EDITOR_STARFIELD_1_14_78_0,	"CreationKitPlatformExtended_SF_1_14_78_0.database"		},
 			{ EDITOR_STARFIELD_1_15_216_0,	"CreationKitPlatformExtended_SF_1_15_216_0.database"	},
+			{ EDITOR_STARFIELD_1_15_222_0,	"CreationKitPlatformExtended_SF_1_15_222_0.database"	},
 		};
 
 		// Список коротких названий поддерживаемых игр
@@ -157,6 +159,7 @@ namespace CreationKitPlatformExtended
 			"creationkit_sf_1_14_74_0",
 			"creationkit_sf_1_14_78_0",
 			"creationkit_sf_1_15_216_0",
+			"creationkit_sf_1_15_222_0",
 		};
 
 		inline EDITOR_EXECUTABLE_SHORT_TYPE GetShortExecutableTypeFromFull(EDITOR_EXECUTABLE_TYPE editorVersion)
@@ -178,6 +181,7 @@ namespace CreationKitPlatformExtended
 			case EDITOR_STARFIELD_1_14_74_0:
 			case EDITOR_STARFIELD_1_14_78_0:
 			case EDITOR_STARFIELD_1_15_216_0:
+			case EDITOR_STARFIELD_1_15_222_0:
 				return EDITOR_SHORT_STARFIELD;
 			default:
 				return EDITOR_SHORT_UNKNOWN;
