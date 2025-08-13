@@ -25,7 +25,8 @@ namespace CreationKitPlatformExtended
 			EDITOR_STARFIELD_1_14_74_0,
 			EDITOR_STARFIELD_1_14_78_0,
 			EDITOR_STARFIELD_1_15_216_0,
-			EDITOR_STARFIELD_LAST = EDITOR_STARFIELD_1_15_216_0,
+			EDITOR_STARFIELD_1_15_222_0,
+			EDITOR_STARFIELD_LAST = EDITOR_STARFIELD_1_15_222_0,
 		};
 
 		enum EDITOR_EXECUTABLE_SHORT_TYPE {
@@ -61,6 +62,7 @@ namespace CreationKitPlatformExtended
 			{ 0x01BF6FB3ul, EDITOR_STARFIELD_1_14_74_0		},	// Redirect Steam
 			{ 0x8C475320ul, EDITOR_STARFIELD_1_14_78_0		},	// Redirect Steam
 			{ 0x8C475320ul, EDITOR_STARFIELD_1_15_216_0		},	// Redirect Steam
+			{ 0xAA061EEBul, EDITOR_STARFIELD_1_15_222_0     },   // Redirect Steam
 		};
 
 		// Список устаревших версий редакторов
@@ -89,6 +91,7 @@ namespace CreationKitPlatformExtended
 			{ 0x875F450ul, { "1.14.74.0",	EDITOR_STARFIELD_1_14_74_0		} },
 			{ 0x875F550ul, { "1.14.78.0",	EDITOR_STARFIELD_1_14_78_0		} },
 			{ 0x84D9B40ul, { "1.15.216.0",	EDITOR_STARFIELD_1_15_216_0		} },
+			{ 0x84C7B20ul, { "1.15.222.0", EDITOR_STARFIELD_1_15_222_0    } }
 		};
 		
 		// Список названий редакторов
