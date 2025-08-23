@@ -35,6 +35,9 @@ Open a project in **`Visual Studio 2022`** or later. Build the project in **`Rel
 Then move your build output into game directory, so that **ckpe_loader.exe** is in the same folder as **CreationKit.exe**.  
 If you are asked to replace old files agree to replace all.
 ### Automate builds (Beta)
+> [!CAUTION]
+> Nightly builds aka automated builds are **EXPERIMENTAL**. You use them at your own risk. Be sure to backup your work constantly.
+
 Download [latest commit build](https://github.com/Perchik71/Creation-Kit-Platform-Extended/actions) of **CKPE** for your game.  
 Extract all contents into game directory, so that **ckpe_loader.exe** is in the same folder as **CreationKit.exe**.  
 Possible errors.
