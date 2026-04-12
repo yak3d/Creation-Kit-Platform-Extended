@@ -115,6 +115,7 @@ namespace CKPE
 						if ((rc.bottom - rc.top > cy) && (rc.right - rc.left > (cx + 8)))
 						{
 							cy = ((rc.bottom - rc.top) - cy) >> 1;
+							 
 
 							LVITEMA lvi = { 0 };
 							lvi.mask = LVIF_IMAGE;
@@ -169,8 +170,10 @@ namespace CKPE
 					case CDDS_ITEMPREPAINT:
 						return CDRF_NOTIFYSUBITEMDRAW;
 						//Before a subitem is drawn
-					case CDDS_SUBITEM | CDDS_ITEMPREPAINT: 
+					case CDDS_SUBITEM | CDDS_ITEMPREPAINT:
 					{
+						lpListView->clrTextBk = GetThemeSysColor(ThemeColor_ListView_Color);
+
 						if (lpListView->nmcd.hdr.idFrom == UI_CONTROL_CONDITION_ID)
 						{
 							if (lpListView->iSubItem == 0 || lpListView->iSubItem == 5)

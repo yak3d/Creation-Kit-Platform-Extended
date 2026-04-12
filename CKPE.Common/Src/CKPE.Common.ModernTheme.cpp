@@ -47,6 +47,7 @@
 #include <CKPE.Common.UITrackBar.h>
 #include <CKPE.Common.UITreeView.h>
 #include <CKPE.Common.UIUpDown.h>
+#include <CKPE.Utils.h>
 
 namespace CKPE
 {
@@ -363,8 +364,8 @@ namespace CKPE
 			{
 				auto f = UI::ThemeData::GetSingleton()->ThemeFont;
 
-				return (HFONT)::CreateFontA(f->Height, 0, cEscapement, cOrientation, cWeight, bItalic, bUnderline, 
-					bStrikeOut, _READ_OPTION_INT("CreationKit", "nCharset", DEFAULT_CHARSET), iOutPrecision, 
+				return (HFONT)::CreateFontA(f->Height, 0, cEscapement, cOrientation, cWeight, bItalic, bUnderline,
+					bStrikeOut, _READ_OPTION_INT("CreationKit", "nCharset", DEFAULT_CHARSET), iOutPrecision,
 					iClipPrecision, CLEARTYPE_NATURAL_QUALITY, VARIABLE_PITCH, f->GetName().c_str());
 			}
 
@@ -1594,6 +1595,12 @@ namespace CKPE
 				{
 					auto themeType = GetThemeTypeFromWindow(nmhdr->hwndFrom);
 
+					// Wine's comctl32 breaks text rendering when CDRF_NEWFONT is returned.
+					// Skip custom draw for ListView/TreeView — colors are set via Initialize().
+					if (CKPE_UserUseWine() &&
+						(themeType == ThemeType::ListView || themeType == ThemeType::TreeView))
+						break;
+
 					if ((themeType == ThemeType::TreeView) && (nmhdr->idFrom != 2093))
 						// I have no idea why TreeView uses the ListView functionality, this question is for microsoft.
 						return UI::TreeView::OnCustomDraw(hWnd, (LPNMLVCUSTOMDRAW)lParam);
@@ -1717,6 +1724,11 @@ namespace CKPE
 					{
 					case WM_CREATE:
 					{
+						// Under Wine, skip ALL WM_CREATE subclassing.
+						// Only WM_INITDIALOG (dialog subclassing) is used.
+						if (CKPE_UserUseWine())
+							break;
+
 						auto lpCreateStruct = (LPCREATESTRUCTA)messageData->lParam;
 						if (lpCreateStruct)
 						{
@@ -1725,7 +1737,7 @@ namespace CKPE
 								(lpCreateStruct->lpszName ? lpCreateStruct->lpszName : ""));*/
 
 							if ((lpCreateStruct->hInstance) &&
-								(lpCreateStruct->hInstance != GetModuleHandleA("comdlg32.dll"))) 
+								(lpCreateStruct->hInstance != GetModuleHandleA("comdlg32.dll")))
 							{
 								if (WindowHandles.find(messageData->hwnd) == WindowHandles.end())
 								{
@@ -1756,13 +1768,43 @@ namespace CKPE
 							if (ExcludeSubclassKnownWindowsAndApplyDarkTheme(messageData->hwnd, true))
 							{
 								RemoveWindowSubclass(messageData->hwnd, WindowSubclassModernTheme, 0);
-								SetWindowSubclass(messageData->hwnd, DialogSubclassModernTheme, 0, 
+								SetWindowSubclass(messageData->hwnd, DialogSubclassModernTheme, 0,
 									reinterpret_cast<DWORD_PTR>(&DialogSubclassModernTheme));
 								wnd->second = true;
 							}
 							else
 								wnd->second = true;
 						}
+
+						// Under Wine, WM_CREATE subclassing is skipped. Set colors on
+						// child ListView/TreeView controls now that they're fully created.
+						if (CKPE_UserUseWine())
+						{
+							EnumChildWindows(messageData->hwnd, [](HWND hChild, LPARAM) -> BOOL
+							{
+								char className[64] = {};
+								GetClassNameA(hChild, className, sizeof(className));
+
+								if (!_stricmp(className, WC_LISTVIEWA))
+								{
+									ListView_SetTextColor(hChild,
+										UI::GetThemeSysColor(UI::ThemeColor_Text_4));
+									ListView_SetTextBkColor(hChild,
+										UI::GetThemeSysColor(UI::ThemeColor_ListView_Color));
+									ListView_SetBkColor(hChild,
+										UI::GetThemeSysColor(UI::ThemeColor_ListView_Color));
+								}
+								else if (!_stricmp(className, WC_TREEVIEWA))
+								{
+									TreeView_SetTextColor(hChild,
+										UI::GetThemeSysColor(UI::ThemeColor_Text_4));
+									TreeView_SetBkColor(hChild,
+										UI::GetThemeSysColor(UI::ThemeColor_TreeView_Color));
+								}
+								return TRUE;
+							}, 0);
+						}
+
 						break;
 					}
 					}
@@ -1831,14 +1873,14 @@ namespace CKPE
 			Detours::DetourIAT(pcurrent, "USER32.dll", "GetSysColor",
 				(std::uintptr_t)&APIHook::Comctl32GetSysColor);
 			Detours::DetourIAT(pcurrent, "USER32.dll", "GetSysColorBrush",
-				(std::uintptr_t)&APIHook::Comctl32GetSysColorBrush2);			// Нужна именно эта функция так как первая вызывает зависание 
-			Detours::DetourIAT(comDll, "USER32.dll", "GetSysColor", 
+				(std::uintptr_t)&APIHook::Comctl32GetSysColorBrush2);			// Нужна именно эта функция так как первая вызывает зависание
+			Detours::DetourIAT(comDll, "USER32.dll", "GetSysColor",
 				(std::uintptr_t)&APIHook::Comctl32GetSysColor);
-			Detours::DetourIAT(comDll, "USER32.dll", "GetSysColorBrush", 
+			Detours::DetourIAT(comDll, "USER32.dll", "GetSysColorBrush",
 				(std::uintptr_t)&APIHook::Comctl32GetSysColorBrush);
-			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeBackground", 
+			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeBackground",
 				(std::uintptr_t)&APIHook::Comctl32DrawThemeBackground);
-			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeText", 
+			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeText",
 				(std::uintptr_t)&APIHook::Comctl32DrawThemeText);
 
 			// Bethesda began to move forward, but abandoned its UI in favor of Qt.
@@ -1849,11 +1891,11 @@ namespace CKPE
 			auto qt5Widgets = reinterpret_cast<std::uintptr_t>(GetModuleHandleA("qt5widgets.dll"));
 			if (qt5Widgets)
 			{
-				Detours::DetourIAT(qt5Widgets, "USER32.dll", "GetSysColor", 
+				Detours::DetourIAT(qt5Widgets, "USER32.dll", "GetSysColor",
 					(std::uintptr_t)&APIHook::Comctl32GetSysColor);
-				Detours::DetourIATDelayed(qt5Widgets, "UxTheme.dll", "DrawThemeBackground", 
+				Detours::DetourIATDelayed(qt5Widgets, "UxTheme.dll", "DrawThemeBackground",
 					(std::uintptr_t)&APIHook::Comctl32DrawThemeBackground);
-				Detours::DetourIATDelayed(qt5Widgets, "UxTheme.dll", "DrawThemeTextEx", 
+				Detours::DetourIATDelayed(qt5Widgets, "UxTheme.dll", "DrawThemeTextEx",
 					(std::uintptr_t)&APIHook::Comctl32DrawThemeTextEx);
 			}
 

@@ -100,6 +100,7 @@ namespace CKPE
 						//Before a subitem is drawn
 					case CDDS_SUBITEM | CDDS_ITEMPREPAINT:
 					{
+						lpTreeView->clrTextBk = GetThemeSysColor(ThemeColor_TreeView_Color);
 						lpTreeView->clrText = GetThemeSysColor(ThemeColor_Text_4);
 						return CDRF_NEWFONT;
 					}

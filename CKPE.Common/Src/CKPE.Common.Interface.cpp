@@ -358,7 +358,7 @@ namespace CKPE
 				SafeExit::Hook::Initialize();	// Init fast quit
 				Threads::Hook::Initialize();	// Init threads
 
-				if (!CKPE_UserUseWine())
+				if (!CKPE_UserUseWine() || _READ_OPTION_BOOL("CreationKit", "bForceThemeOnWine", false))
 				{
 					if (_READ_OPTION_BOOL("CreationKit", "bUIClassicTheme", false))
 						ClassicTheme::Hook::Initialize();
@@ -389,6 +389,17 @@ namespace CKPE
 				GET_EXE_VERSION_EX_MINOR(_version), GET_EXE_VERSION_EX_BUILD(_version), GET_EXE_VERSION_EX_REVISION(_version));
 			_CONSOLE("CKPE Game Library: %u.%u build %u rev:%u", GET_EXE_VERSION_EX_MAJOR(a_version),
 				GET_EXE_VERSION_EX_MINOR(a_version), GET_EXE_VERSION_EX_BUILD(a_version), GET_EXE_VERSION_EX_REVISION(a_version));
+			_CONSOLE("CKPE Common Library loaded: %ls", _dllName);
+
+			if (CKPE_UserUseWine())
+			{
+				_CONSOLE("Wine/Proton environment detected.");
+				if (_READ_OPTION_BOOL("CreationKit", "bForceThemeOnWine", false))
+					_CONSOLE("bForceThemeOnWine is enabled, theme will be loaded.");
+				else
+					_CONSOLE("Theme disabled under Wine. Set bForceThemeOnWine=true to override.");
+			}
+
 			_CONSOLE("I have created a log file: \"%s\"", StringUtils::Utf16ToWinCP(_interface->logger->GetFileName()).c_str());
 
 			auto log = LogWindow::GetSingleton();
