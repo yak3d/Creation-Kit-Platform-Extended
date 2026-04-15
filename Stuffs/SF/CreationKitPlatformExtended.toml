@@ -14,6 +14,7 @@ bAllowSaveESM=true						# Allow saving master files directly & setting them as t
 bAllowMasterESP=true					# Allow ESP files to act as master files while saving.
 bUIClassicTheme=false					# Enable classic theme. Incompatible with bUIDarkTheme and may cause graphical problems.
 bUIDarkTheme=false						# Enable dark theme. Requires a Windows theme with styling (Aero) to be enabled and may cause graphical problems.
+bForceThemeOnWine=false					# [Experimental] Force theme (classic or dark) to load when running under Wine/Proton. Use at your own risk.
 
 # Set charset for font ListView, ListBox, TreeView controls (worked only bUIDarkTheme > 0)
 # ANSI_CHARSET				0

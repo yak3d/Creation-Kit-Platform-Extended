@@ -45,6 +45,9 @@ bUIClassicTheme = false
 # Enable dark theme. Requires a Windows theme with styling (Aero) to be enabled and may cause graphical problems.
 bUIDarkTheme = true
 
+# [Experimental] Force theme (classic or dark) to load when running under Wine/Proton. Use at your own risk.
+bForceThemeOnWine = false
+
 # Theme version, 0 - lighter, 1 - darker, 2 - night blue, 3 - custom.
 uUIDarkThemeId = 1
 
