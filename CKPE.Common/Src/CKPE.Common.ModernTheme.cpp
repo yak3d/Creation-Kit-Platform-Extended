@@ -47,6 +47,7 @@
 #include <CKPE.Common.UITrackBar.h>
 #include <CKPE.Common.UITreeView.h>
 #include <CKPE.Common.UIUpDown.h>
+#include <CKPE.Utils.h>
 
 namespace CKPE
 {
@@ -287,6 +288,44 @@ namespace CKPE
 			static COLORREF WINAPI SetTextColor(HDC hdc, COLORREF color) noexcept(true)
 			{
 				return ::SetTextColor(hdc, !color ? UI::GetThemeSysColor(UI::ThemeColor_Text_4) : color);
+			}
+
+			// Wine-specific: comctl32 internally calls SetTextColor(hdc, 0) (black) before drawing
+			// ListView/TreeView items, overwriting any color set during NM_CUSTOMDRAW. Hook it on
+			// comctl32's GDI32 IAT and replace black-on-dark with the theme text color.
+			static COLORREF WINAPI SetTextColorWine(HDC hdc, COLORREF color) noexcept(true)
+			{
+				if (!color)
+				{
+					auto bgColor = GetBkColor(hdc);
+					if (bgColor != CLR_INVALID)
+					{
+						auto brightness = (GetRValue(bgColor) + GetGValue(bgColor) + GetBValue(bgColor)) / 3;
+						if (brightness < 128)
+							return ::SetTextColor(hdc, UI::GetThemeSysColor(UI::ThemeColor_Text_4));
+					}
+				}
+				return ::SetTextColor(hdc, color);
+			}
+
+			// Wine-specific: Wine's comctl32 calls SetBkColor(hdc, 0xFFFFFF) during TreeView/ListView
+			// item draws (from DrawThemeBackground / visual style painting), producing a white fill
+			// that either covers drawn text or causes light-on-white rendering. Replace pure white
+			// background with the theme dark color when the current text color is already light
+			// (confirming we are inside a dark-theme item draw).
+			static COLORREF WINAPI SetBkColorWine(HDC hdc, COLORREF color) noexcept(true)
+			{
+				if (color == RGB(0xFF, 0xFF, 0xFF))
+				{
+					auto textColor = GetTextColor(hdc);
+					if (textColor != CLR_INVALID)
+					{
+						auto brightness = (GetRValue(textColor) + GetGValue(textColor) + GetBValue(textColor)) / 3;
+						if (brightness > 128)
+							return ::SetBkColor(hdc, UI::GetThemeSysColor(UI::ThemeColor_Default));
+					}
+				}
+				return ::SetBkColor(hdc, color);
 			}
 
 			static BOOL WINAPI DrawEdge(HDC hdc, LPRECT qrc, UINT edge, UINT grfFlags) noexcept(true)
@@ -1763,6 +1802,7 @@ namespace CKPE
 							else
 								wnd->second = true;
 						}
+
 						break;
 					}
 					}
@@ -1836,10 +1876,21 @@ namespace CKPE
 				(std::uintptr_t)&APIHook::Comctl32GetSysColor);
 			Detours::DetourIAT(comDll, "USER32.dll", "GetSysColorBrush", 
 				(std::uintptr_t)&APIHook::Comctl32GetSysColorBrush);
-			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeBackground", 
+			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeBackground",
 				(std::uintptr_t)&APIHook::Comctl32DrawThemeBackground);
-			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeText", 
+			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeText",
 				(std::uintptr_t)&APIHook::Comctl32DrawThemeText);
+
+			// Under Wine, comctl32 calls SetTextColor/SetBkColor with values that cause
+			// text to be invisible (wrong color or covered by a white fill). Hook both to
+			// keep dark-theme colors consistent throughout item draw.
+			if (CKPE_UserUseWine())
+			{
+				Detours::DetourIAT(comDll, "GDI32.dll", "SetTextColor",
+					(std::uintptr_t)&APIHook::SetTextColorWine);
+				Detours::DetourIAT(comDll, "GDI32.dll", "SetBkColor",
+					(std::uintptr_t)&APIHook::SetBkColorWine);
+			}
 
 			// Bethesda began to move forward, but abandoned its UI in favor of Qt.
 			// Perhaps this is justified, since it first forced them to redo the UI, and Qt is a reliable library.

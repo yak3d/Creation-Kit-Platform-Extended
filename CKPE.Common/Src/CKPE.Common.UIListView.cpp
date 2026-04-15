@@ -4,6 +4,7 @@
 
 #include <CKPE.Common.UIListView.h>
 #include <CKPE.Common.UIVarCommon.h>
+#include <CKPE.Utils.h>
 #include <commctrl.h>
 #include <vssym32.h>
 
@@ -169,8 +170,10 @@ namespace CKPE
 					case CDDS_ITEMPREPAINT:
 						return CDRF_NOTIFYSUBITEMDRAW;
 						//Before a subitem is drawn
-					case CDDS_SUBITEM | CDDS_ITEMPREPAINT: 
+					case CDDS_SUBITEM | CDDS_ITEMPREPAINT:
 					{
+						lpListView->clrTextBk = GetThemeSysColor(ThemeColor_ListView_Color);
+
 						if (lpListView->nmcd.hdr.idFrom == UI_CONTROL_CONDITION_ID)
 						{
 							if (lpListView->iSubItem == 0 || lpListView->iSubItem == 5)
@@ -178,10 +181,18 @@ namespace CKPE
 							else
 								lpListView->clrText = GetThemeSysColor(ThemeColor_Text_4);
 
+							// Under Wine, CDRF_NEWFONT causes the struct colors to be ignored.
+							// Set the DC text color directly so Wine uses it during item draw.
+							if (CKPE_UserUseWine())
+								SetTextColor(lpListView->nmcd.hdc, lpListView->clrText);
 							return CDRF_NEWFONT;
 						}
 
 						lpListView->clrText = GetThemeSysColor(ThemeColor_Text_4);
+						// Under Wine, CDRF_NEWFONT causes the struct colors to be ignored.
+						// Set the DC text color directly so Wine uses it during item draw.
+						if (CKPE_UserUseWine())
+							SetTextColor(lpListView->nmcd.hdc, lpListView->clrText);
 						return CDRF_NEWFONT;
 					}
 					default:

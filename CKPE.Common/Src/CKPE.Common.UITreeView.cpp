@@ -5,6 +5,7 @@
 #include <CKPE.Common.UIBaseWindow.h>
 #include <CKPE.Common.UIVarCommon.h>
 #include <CKPE.Common.UITreeView.h>
+#include <CKPE.Utils.h>
 #include <vssym32.h>
 
 namespace CKPE
@@ -25,12 +26,17 @@ namespace CKPE
 					TreeView_SetTextColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_Text_4));
 					TreeView_SetBkColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_TreeView_Color));
 
-					auto StyleEx = TreeView_GetExtendedStyle(hWindow);
-					if ((StyleEx & TVS_EX_DOUBLEBUFFER) != TVS_EX_DOUBLEBUFFER)
+					// TVS_EX_DOUBLEBUFFER eliminates flicker on resize, but under Wine the
+					// offscreen DC is re-initialized with default (black) text color after
+					// each NM_CUSTOMDRAW notification, defeating our color overrides.
+					if (!CKPE_UserUseWine())
 					{
-						// Eliminate the flicker when changing size trees
-						StyleEx |= TVS_EX_DOUBLEBUFFER;
-						TreeView_SetExtendedStyle(hWindow, StyleEx, StyleEx);
+						auto StyleEx = TreeView_GetExtendedStyle(hWindow);
+						if ((StyleEx & TVS_EX_DOUBLEBUFFER) != TVS_EX_DOUBLEBUFFER)
+						{
+							StyleEx |= TVS_EX_DOUBLEBUFFER;
+							TreeView_SetExtendedStyle(hWindow, StyleEx, StyleEx);
+						}
 					}
 
 					return OpenThemeData(hWindow, VSCLASS_SCROLLBAR);
@@ -100,7 +106,12 @@ namespace CKPE
 						//Before a subitem is drawn
 					case CDDS_SUBITEM | CDDS_ITEMPREPAINT:
 					{
+						lpTreeView->clrTextBk = GetThemeSysColor(ThemeColor_TreeView_Color);
 						lpTreeView->clrText = GetThemeSysColor(ThemeColor_Text_4);
+						// Under Wine, CDRF_NEWFONT causes the struct colors to be ignored.
+						// Set the DC text color directly so Wine uses it during item draw.
+						if (CKPE_UserUseWine())
+							SetTextColor(lpTreeView->nmcd.hdc, lpTreeView->clrText);
 						return CDRF_NEWFONT;
 					}
 					default:
