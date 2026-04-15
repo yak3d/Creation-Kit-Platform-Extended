@@ -363,7 +363,7 @@ namespace CKPE
 				SafeExit::Hook::Initialize();	// Init fast quit
 				Threads::Hook::Initialize();	// Init threads
 
-				if (!CKPE_UserUseWine())
+				if (!CKPE_UserUseWine() || _READ_OPTION_BOOL("CreationKit", "bForceThemeOnWine", false))
 				{
 					if (_READ_OPTION_BOOL("CreationKit", "bUIClassicTheme", false))
 						ClassicTheme::Hook::Initialize();

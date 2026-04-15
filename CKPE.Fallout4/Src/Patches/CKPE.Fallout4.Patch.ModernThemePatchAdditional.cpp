@@ -227,7 +227,8 @@ namespace CKPE
 
 			bool ModernThemePatchAdditional::DoQuery() const noexcept(true)
 			{
-				return !CKPE_UserUseWine() && (VersionLists::GetEditorVersion() <= VersionLists::EDITOR_FALLOUT_C4_LAST);
+				return (!CKPE_UserUseWine() || _READ_OPTION_BOOL("CreationKit", "bForceThemeOnWine", false)) &&
+					(VersionLists::GetEditorVersion() <= VersionLists::EDITOR_FALLOUT_C4_LAST);
 			}
 
 			bool ModernThemePatchAdditional::DoActive(Common::RelocatorDB::PatchDB* db) noexcept(true)
