@@ -3,6 +3,7 @@
 // License: https://www.gnu.org/licenses/lgpl-3.0.html
 
 #include <windows.h>
+#include <CKPE.Utils.h>
 #include <CKPE.Detours.h>
 #include <CKPE.Graphics.h>
 #include <CKPE.Application.h>
@@ -119,7 +120,7 @@ namespace CKPE
 					ListView_InsertGroup(pluginListHandle, -1, &defaultGroup);
 					ListView_InsertGroup(pluginListHandle, -1, &hiddenGroup);
 
-					if (Common::UI::IsDarkTheme())
+					if (Common::UI::IsDarkTheme() && !CKPE_UserUseWine())
 						_This->m_pluginList.SetStyle(_This->m_pluginList.GetStyle() | LVS_OWNERDRAWFIXED);
 
 					// Bethesda probably doesn't know about the existence of Check. 

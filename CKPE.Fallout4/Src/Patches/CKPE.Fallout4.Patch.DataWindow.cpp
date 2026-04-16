@@ -4,6 +4,7 @@
 
 #include <windows.h>
 #include <windowsx.h>
+#include <CKPE.Utils.h>
 #include <CKPE.SafeWrite.h>
 #include <CKPE.Detours.h>
 #include <CKPE.Graphics.h>
@@ -264,8 +265,11 @@ namespace CKPE
 
 					if (Common::UI::IsDarkTheme())
 					{
-						_This->m_pluginList.SetStyle(_This->m_pluginList.GetStyle() | LVS_OWNERDRAWFIXED);
-						_This->m_pluginResultList.SetStyle(_This->m_pluginResultList.GetStyle() | LVS_OWNERDRAWFIXED);
+						if (!CKPE_UserUseWine())
+						{
+							_This->m_pluginList.SetStyle(_This->m_pluginList.GetStyle() | LVS_OWNERDRAWFIXED);
+							_This->m_pluginResultList.SetStyle(_This->m_pluginResultList.GetStyle() | LVS_OWNERDRAWFIXED);
+						}
 
 						if ((Common::UI::GetTheme() == Common::UI::Theme_Custom) && Common::UI::NeedDarkCheck())
 							goto DarkCheckIcons;

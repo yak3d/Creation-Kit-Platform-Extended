@@ -463,12 +463,19 @@ namespace CKPE
 				}
 				else
 				{
-					// detected standart OS theme (comdlg32)
-					COLORREF clTest = GetPixel(hdc, pRect->left + ((pRect->right - pRect->left) >> 1), pRect->top + 2);
-					if (CLR_INVALID != clTest && ((GetRValue(clTest) + GetGValue(clTest) + GetBValue(clTest)) / 3) > 128)
+					// Detect standard OS theme (comdlg32) by sampling a pixel from the DC.
+					// Skip this check under Wine: DrawThemeBackground often leaves a white fill
+					// on the DC before DrawThemeText is called, causing the brightness test to
+					// pass and fall through to the real DrawThemeText — which renders dark text
+					// on our dark background, making it invisible.
+					if (!CKPE_UserUseWine())
 					{
-						auto Ret = DrawThemeText(hTheme, hdc, iPartId, iStateId, pszText, cchText, dwTextFlags, dwTextFlags2, pRect);
-						return Ret;
+						COLORREF clTest = GetPixel(hdc, pRect->left + ((pRect->right - pRect->left) >> 1), pRect->top + 2);
+						if (CLR_INVALID != clTest && ((GetRValue(clTest) + GetGValue(clTest) + GetBValue(clTest)) / 3) > 128)
+						{
+							auto Ret = DrawThemeText(hTheme, hdc, iPartId, iStateId, pszText, cchText, dwTextFlags, dwTextFlags2, pRect);
+							return Ret;
+						}
 					}
 
 					RECT rc = *pRect;
@@ -1880,6 +1887,9 @@ namespace CKPE
 				(std::uintptr_t)&APIHook::Comctl32DrawThemeBackground);
 			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeText",
 				(std::uintptr_t)&APIHook::Comctl32DrawThemeText);
+			// Wine may call DrawThemeTextEx instead of DrawThemeText for ListView/TreeView items
+			Detours::DetourIATDelayed(comDll, "UxTheme.dll", "DrawThemeTextEx",
+				(std::uintptr_t)&APIHook::Comctl32DrawThemeTextEx);
 
 			// Under Wine, comctl32 calls SetTextColor/SetBkColor with values that cause
 			// text to be invisible (wrong color or covered by a white fill). Hook both to

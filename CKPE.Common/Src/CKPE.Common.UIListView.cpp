@@ -33,6 +33,12 @@ namespace CKPE
 					ListView_SetTextBkColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_ListView_Color));
 					ListView_SetBkColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_ListView_Color));
 
+					// Under Wine, visual styles cause comctl32 to use DrawThemeText which
+					// ignores NM_CUSTOMDRAW colors. Opting out of theming forces the classic
+					// GDI rendering path where clrText/clrTextBk are respected.
+					if (CKPE_UserUseWine())
+						SetWindowTheme(hWindow, L"", L"");
+
 					return OpenThemeData(hWindow, VSCLASS_SCROLLBAR);
 				}
 

@@ -26,6 +26,12 @@ namespace CKPE
 					TreeView_SetTextColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_Text_4));
 					TreeView_SetBkColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_TreeView_Color));
 
+					// Under Wine, visual styles cause comctl32 to use DrawThemeText which
+					// ignores NM_CUSTOMDRAW colors. Opting out of theming forces the classic
+					// GDI rendering path where clrText/clrTextBk are respected.
+					if (CKPE_UserUseWine())
+						SetWindowTheme(hWindow, L"", L"");
+
 					// TVS_EX_DOUBLEBUFFER eliminates flicker on resize, but under Wine the
 					// offscreen DC is re-initialized with default (black) text color after
 					// each NM_CUSTOMDRAW notification, defeating our color overrides.
