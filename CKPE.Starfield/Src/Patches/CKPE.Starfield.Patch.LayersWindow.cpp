@@ -156,7 +156,7 @@ namespace CKPE
 
 				LayersWindow::Singleton->TreeView = TVHwnd;
 
-				if (Common::UI::IsDarkTheme())
+				if (Common::UI::IsDarkTheme() && !CKPE_UserUseWine())
 				{
 					TreeView_SetTextColor(TVHwnd, 0);
 					TreeView_SetBkColor(TVHwnd, RGB(255, 255, 255));

@@ -1636,9 +1636,11 @@ namespace CKPE
 				{
 					auto themeType = GetThemeTypeFromWindow(nmhdr->hwndFrom);
 
-					if ((themeType == ThemeType::TreeView) && (nmhdr->idFrom != 2093))
+					if (themeType == ThemeType::TreeView)
+					{
 						// I have no idea why TreeView uses the ListView functionality, this question is for microsoft.
 						return UI::TreeView::OnCustomDraw(hWnd, (LPNMLVCUSTOMDRAW)lParam);
+					}
 
 					if (themeType == ThemeType::ListView)
 					{
@@ -1759,15 +1761,17 @@ namespace CKPE
 					{
 					case WM_CREATE:
 					{
+						// Under Wine, SetWindowSubclass during WM_CREATE corrupts comctl32
+						// internal state and breaks text rendering for all controls.
+						// Child controls are initialized via EnumChildWindows in WM_INITDIALOG.
+						if (CKPE_UserUseWine())
+							break;
+
 						auto lpCreateStruct = (LPCREATESTRUCTA)messageData->lParam;
 						if (lpCreateStruct)
 						{
-							/*_CONSOLE("cw %p <%s> <%s>", lpCreateStruct->lpszClass,
-								(((uintptr_t)lpCreateStruct->lpszClass > 0xFFFFull) ? lpCreateStruct->lpszClass : ""),
-								(lpCreateStruct->lpszName ? lpCreateStruct->lpszName : ""));*/
-
 							if ((lpCreateStruct->hInstance) &&
-								(lpCreateStruct->hInstance != GetModuleHandleA("comdlg32.dll"))) 
+								(lpCreateStruct->hInstance != GetModuleHandleA("comdlg32.dll")))
 							{
 								if (WindowHandles.find(messageData->hwnd) == WindowHandles.end())
 								{
@@ -1798,12 +1802,40 @@ namespace CKPE
 							if (ExcludeSubclassKnownWindowsAndApplyDarkTheme(messageData->hwnd, true))
 							{
 								RemoveWindowSubclass(messageData->hwnd, WindowSubclassModernTheme, 0);
-								SetWindowSubclass(messageData->hwnd, DialogSubclassModernTheme, 0, 
+								SetWindowSubclass(messageData->hwnd, DialogSubclassModernTheme, 0,
 									reinterpret_cast<DWORD_PTR>(&DialogSubclassModernTheme));
 								wnd->second = true;
 							}
 							else
 								wnd->second = true;
+						}
+
+						// Under Wine, WM_CREATE is skipped to avoid comctl32 corruption.
+						// Initialize child ListView/TreeView controls here instead.
+						if (CKPE_UserUseWine())
+						{
+							EnumChildWindows(messageData->hwnd, [](HWND child, LPARAM) -> BOOL
+							{
+								auto themeType = GetThemeTypeFromWindow(child);
+								auto f = UI::ThemeData::GetSingleton()->ThemeFont;
+								HTHEME scrollBarTheme = nullptr;
+								switch (themeType)
+								{
+								case ThemeType::ListView:
+									scrollBarTheme = UI::ListView::Initialize(child);
+									PostMessageA(child, WM_SETFONT, (WPARAM)f->Handle, TRUE);
+									break;
+								case ThemeType::TreeView:
+									scrollBarTheme = UI::TreeView::Initialize(child);
+									PostMessageA(child, WM_SETFONT, (WPARAM)f->Handle, TRUE);
+									break;
+								default:
+									break;
+								}
+								if (scrollBarTheme)
+									RegisterThemeHandle(scrollBarTheme, ThemeType::ScrollBar);
+								return TRUE;
+							}, 0);
 						}
 
 						break;

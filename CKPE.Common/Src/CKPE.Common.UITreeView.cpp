@@ -29,7 +29,7 @@ namespace CKPE
 
 					// Under Wine, visual styles cause comctl32 to use DrawThemeText which
 					// ignores NM_CUSTOMDRAW colors. Opting out of theming forces the classic
-					// GDI rendering path where clrText/clrTextBk are respected.
+					// GDI rendering path where TreeView_SetTextColor/SetBkColor are respected.
 					if (CKPE_UserUseWine())
 						SetWindowTheme(hWindow, L"", L"");
 
@@ -114,6 +114,11 @@ namespace CKPE
 
 				CKPE_COMMON_API LRESULT OnCustomDraw(HWND hWindow, LPNMLVCUSTOMDRAW lpTreeView) noexcept(true)
 				{
+					// Under Wine, NM_CUSTOMDRAW interferes with native rendering.
+					// Colors are set via TreeView_SetTextColor/SetBkColor in Initialize.
+					if (CKPE_UserUseWine())
+						return CDRF_DODEFAULT;
+
 					switch (lpTreeView->nmcd.dwDrawStage)
 					{
 						//Before the paint cycle begins
@@ -125,15 +130,6 @@ namespace CKPE
 					{
 						lpTreeView->clrTextBk = GetThemeSysColor(ThemeColor_TreeView_Color);
 						lpTreeView->clrText = GetThemeSysColor(ThemeColor_Text_4);
-						if (CKPE_UserUseWine())
-						{
-							// Under Wine with classic rendering (SetWindowTheme L"" L""), returning
-							// CDRF_NEWFONT causes comctl32 to re-init the DC with default colors,
-							// overriding SetTextColor. Use CDRF_DODEFAULT so the DC color we set
-							// here is preserved when comctl32 draws the item text.
-							SetTextColor(lpTreeView->nmcd.hdc, lpTreeView->clrText);
-							return CDRF_DODEFAULT;
-						}
 						return CDRF_NEWFONT | CDRF_NOTIFYSUBITEMDRAW;
 					}
 						//Before a subitem is drawn
@@ -141,11 +137,6 @@ namespace CKPE
 					{
 						lpTreeView->clrTextBk = GetThemeSysColor(ThemeColor_TreeView_Color);
 						lpTreeView->clrText = GetThemeSysColor(ThemeColor_Text_4);
-						if (CKPE_UserUseWine())
-						{
-							SetTextColor(lpTreeView->nmcd.hdc, lpTreeView->clrText);
-							return CDRF_DODEFAULT;
-						}
 						return CDRF_NEWFONT;
 					}
 					default:
