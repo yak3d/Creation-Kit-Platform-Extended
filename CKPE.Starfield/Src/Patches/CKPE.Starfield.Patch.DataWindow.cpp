@@ -95,8 +95,13 @@ namespace CKPE
 					// Subscribe to notifications when the user types in the filter text box
 					SendMessageA(GetDlgItem(Hwnd, UI_DATA_DIALOG_FILTERBOX), EM_SETEVENTMASK, 0, ENM_CHANGE);
 
-					// Prevent flickering & adjust width to fit file names
-					ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+					// Prevent flickering & adjust width to fit file names.
+					// Under Wine, remove any LVS_EX_DOUBLEBUFFER set by the game's WM_INITDIALOG — it
+					// breaks LVN_GETDISPINFO text callbacks so item text is never delivered to the control.
+					if (CKPE_UserUseWine())
+						ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, 0);
+					else
+						ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
 					ListView_SetColumnWidth(pluginListHandle, 0, 250);
 
 					// Create two separate list view groups: one for default items and one for hidden (filtered) items. This has to be run
@@ -120,7 +125,7 @@ namespace CKPE
 					ListView_InsertGroup(pluginListHandle, -1, &defaultGroup);
 					ListView_InsertGroup(pluginListHandle, -1, &hiddenGroup);
 
-					if (Common::UI::IsDarkTheme() && !CKPE_UserUseWine())
+					if (Common::UI::IsDarkTheme())
 						_This->m_pluginList.SetStyle(_This->m_pluginList.GetStyle() | LVS_OWNERDRAWFIXED);
 
 					// Bethesda probably doesn't know about the existence of Check. 

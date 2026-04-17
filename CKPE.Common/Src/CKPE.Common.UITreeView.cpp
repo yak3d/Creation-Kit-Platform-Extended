@@ -5,6 +5,7 @@
 #include <CKPE.Common.UIBaseWindow.h>
 #include <CKPE.Common.UIVarCommon.h>
 #include <CKPE.Common.UITreeView.h>
+#include <CKPE.Common.Interface.h>
 #include <CKPE.Utils.h>
 #include <vssym32.h>
 
@@ -51,6 +52,19 @@ namespace CKPE
 				CKPE_COMMON_API LRESULT CALLBACK TreeViewSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
 					UINT_PTR uIdSubclass, DWORD_PTR dwRefData) noexcept(true)
 				{
+					// Under Wine, TVS_EX_DOUBLEBUFFER causes the offscreen DC to reinitialize
+					// with black text and white background, defeating all color overrides and
+					// breaking TVN_GETDISPINFO text delivery. Strip it from any style change.
+					if (uMsg == TVM_SETEXTENDEDSTYLE && CKPE_UserUseWine())
+					{
+						bool hadDoubleBuf = (wParam & TVS_EX_DOUBLEBUFFER) != 0;
+						wParam &= ~static_cast<WPARAM>(TVS_EX_DOUBLEBUFFER);
+						lParam &= ~static_cast<LPARAM>(TVS_EX_DOUBLEBUFFER);
+						if (hadDoubleBuf)
+							_CONSOLE("[Wine][TreeView] stripped TVS_EX_DOUBLEBUFFER hwnd=%p", (void*)hWnd);
+						return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+					}
+
 					if ((uMsg == WM_SETFOCUS) || (uMsg == WM_KILLFOCUS))
 					{
 						InvalidateRect(hWnd, NULL, TRUE);
@@ -108,16 +122,30 @@ namespace CKPE
 						return CDRF_NOTIFYITEMDRAW;
 						//Before an item is drawn
 					case CDDS_ITEMPREPAINT:
-						return CDRF_NOTIFYSUBITEMDRAW;
+					{
+						lpTreeView->clrTextBk = GetThemeSysColor(ThemeColor_TreeView_Color);
+						lpTreeView->clrText = GetThemeSysColor(ThemeColor_Text_4);
+						if (CKPE_UserUseWine())
+						{
+							// Under Wine with classic rendering (SetWindowTheme L"" L""), returning
+							// CDRF_NEWFONT causes comctl32 to re-init the DC with default colors,
+							// overriding SetTextColor. Use CDRF_DODEFAULT so the DC color we set
+							// here is preserved when comctl32 draws the item text.
+							SetTextColor(lpTreeView->nmcd.hdc, lpTreeView->clrText);
+							return CDRF_DODEFAULT;
+						}
+						return CDRF_NEWFONT | CDRF_NOTIFYSUBITEMDRAW;
+					}
 						//Before a subitem is drawn
 					case CDDS_SUBITEM | CDDS_ITEMPREPAINT:
 					{
 						lpTreeView->clrTextBk = GetThemeSysColor(ThemeColor_TreeView_Color);
 						lpTreeView->clrText = GetThemeSysColor(ThemeColor_Text_4);
-						// Under Wine, CDRF_NEWFONT causes the struct colors to be ignored.
-						// Set the DC text color directly so Wine uses it during item draw.
 						if (CKPE_UserUseWine())
+						{
 							SetTextColor(lpTreeView->nmcd.hdc, lpTreeView->clrText);
+							return CDRF_DODEFAULT;
+						}
 						return CDRF_NEWFONT;
 					}
 					default:

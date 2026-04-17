@@ -272,11 +272,15 @@ namespace CKPE
 
 					__This->m_WorldSpaceLabel.Style |= SS_CENTER;
 
-					// Eliminate the flicker when changing cells
-					ListView_SetExtendedListViewStyleEx(__This->m_CellListView.Handle,
-						LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
-					ListView_SetExtendedListViewStyleEx(__This->m_ObjectListView.Handle,
-						LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+					// Eliminate the flicker when changing cells.
+					// LVS_EX_DOUBLEBUFFER breaks LVN_GETDISPINFO text callbacks under Wine.
+					if (!CKPE_UserUseWine())
+					{
+						ListView_SetExtendedListViewStyleEx(__This->m_CellListView.Handle,
+							LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+						ListView_SetExtendedListViewStyleEx(__This->m_ObjectListView.Handle,
+							LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+					}
 
 					SendMessage(__This->m_SelectObjectsOnly.Handle, BM_SETCHECK, BST_UNCHECKED, 0);
 					SendMessage(__This->m_VisibleObjectsOnly.Handle, BM_SETCHECK, BST_UNCHECKED, 0);

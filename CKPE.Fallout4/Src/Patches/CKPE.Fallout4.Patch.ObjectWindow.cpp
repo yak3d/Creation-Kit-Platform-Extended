@@ -281,10 +281,13 @@ namespace CKPE
 					lpObjWnd->Controls.Spliter = lpObjWnd->ObjectWindow.GetControl(2157);
 					lpObjWnd->Controls.ActiveOnly = GetDlgItem(Hwnd, UI_OBJECT_WINDOW_CHECKBOX);
 
-					// Eliminate the flicker when changing categories
-					ListView_SetExtendedListViewStyleEx(lpObjWnd->Controls.ItemList.Handle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
-					// Eliminate the flicker when changing size trees
-					SendMessage(lpObjWnd->Controls.TreeList.Handle, TVM_SETEXTENDEDSTYLE, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
+					// Eliminate the flicker when changing categories/size trees.
+					// LVS/TVS_EX_DOUBLEBUFFER breaks LVN_GETDISPINFO text callbacks under Wine.
+					if (!CKPE_UserUseWine())
+					{
+						ListView_SetExtendedListViewStyleEx(lpObjWnd->Controls.ItemList.Handle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+						SendMessage(lpObjWnd->Controls.TreeList.Handle, TVM_SETEXTENDEDSTYLE, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
+					}
 					// 
 					ListView_SetExtendedListViewStyleEx(lpObjWnd->Controls.ItemList.Handle, LVS_EX_INFOTIP, LVS_EX_INFOTIP);
 

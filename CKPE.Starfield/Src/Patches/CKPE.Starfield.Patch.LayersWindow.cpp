@@ -3,6 +3,7 @@
 // License: https://www.gnu.org/licenses/lgpl-3.0.html
 
 #include <windows.h>
+#include <CKPE.Utils.h>
 #include <CKPE.Detours.h>
 #include <CKPE.SafeWrite.h>
 #include <CKPE.Graphics.h>
@@ -161,7 +162,9 @@ namespace CKPE
 					TreeView_SetBkColor(TVHwnd, RGB(255, 255, 255));
 				}
 
-				TreeView_SetExtendedStyle(TVHwnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
+				// TVS_EX_DOUBLEBUFFER breaks LVN_GETDISPINFO text callbacks under Wine.
+				if (!CKPE_UserUseWine())
+					TreeView_SetExtendedStyle(TVHwnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
 
 				return iRes;
 			}

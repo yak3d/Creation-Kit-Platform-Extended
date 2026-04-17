@@ -4,6 +4,7 @@
 
 #include <windows.h>
 
+#include <CKPE.Utils.h>
 #include <CKPE.SafeWrite.h>
 #include <CKPE.Detours.h>
 #include <CKPE.Graphics.h>
@@ -119,7 +120,9 @@ namespace CKPE
 				auto iRes = Common::EditorUI::Hook::HKSendMessageA(TVHwnd, Message, wParam, lParam);
 
 				SetWindowLongPtrA(TVHwnd, GWL_STYLE, GetWindowLongPtrA(TVHwnd, GWL_STYLE) | WS_BORDER);
-				TreeView_SetExtendedStyle(TVHwnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
+				// TVS_EX_DOUBLEBUFFER breaks LVN_GETDISPINFO text callbacks under Wine.
+				if (!CKPE_UserUseWine())
+					TreeView_SetExtendedStyle(TVHwnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
 
 				return iRes;
 			}

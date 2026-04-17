@@ -4,6 +4,7 @@
 
 #include <CKPE.Common.UIListView.h>
 #include <CKPE.Common.UIVarCommon.h>
+#include <CKPE.Common.Interface.h>
 #include <CKPE.Utils.h>
 #include <commctrl.h>
 #include <vssym32.h>
@@ -37,7 +38,10 @@ namespace CKPE
 					// ignores NM_CUSTOMDRAW colors. Opting out of theming forces the classic
 					// GDI rendering path where clrText/clrTextBk are respected.
 					if (CKPE_UserUseWine())
+					{
+						_CONSOLE("[Wine][ListView] Initialize hwnd=%p calling SetWindowTheme", (void*)hWindow);
 						SetWindowTheme(hWindow, L"", L"");
+					}
 
 					return OpenThemeData(hWindow, VSCLASS_SCROLLBAR);
 				}
@@ -45,6 +49,19 @@ namespace CKPE
 				CKPE_COMMON_API LRESULT CALLBACK ListViewSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
 					[[maybe_unused]] UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
 				{
+					// Under Wine, LVS_EX_DOUBLEBUFFER causes the offscreen DC to reinitialize
+					// with black text and white background, defeating all color overrides and
+					// breaking LVN_GETDISPINFO text delivery. Strip it from any style change.
+					if (uMsg == LVM_SETEXTENDEDLISTVIEWSTYLE && CKPE_UserUseWine())
+					{
+						bool hadDoubleBuf = (wParam & LVS_EX_DOUBLEBUFFER) != 0;
+						wParam &= ~static_cast<WPARAM>(LVS_EX_DOUBLEBUFFER);
+						lParam &= ~static_cast<LPARAM>(LVS_EX_DOUBLEBUFFER);
+						if (hadDoubleBuf)
+							_CONSOLE("[Wine][ListView] stripped LVS_EX_DOUBLEBUFFER hwnd=%p", (void*)hWnd);
+						return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+					}
+
 					if ((uMsg == WM_SETFOCUS) || (uMsg == WM_KILLFOCUS))
 					{
 						InvalidateRect(hWnd, nullptr, TRUE);
@@ -105,8 +122,50 @@ namespace CKPE
 
 					canvas.Fill(rc, GetThemeSysColor(ThemeColor::ThemeColor_ListView_Color));
 
-					ListView_GetItemText(lpDrawItem->hwndItem, lpDrawItem->itemID, 0, FileName, SIZEBUF);
-					ListView_GetItemText(lpDrawItem->hwndItem, lpDrawItem->itemID, 1, FileType, SIZEBUF);
+					FileName[0] = '\0';
+					FileType[0] = '\0';
+
+					if (CKPE_UserUseWine())
+					{
+						// Under Wine, ListView_GetItemText (which dispatches LVN_GETDISPINFO via
+						// LVM_GETITEMTEXT) does not work for LPSTR_TEXTCALLBACK items when called
+						// from within WM_DRAWITEM — the nested dispatch silently returns empty text.
+						// Work around: fetch lParam directly (no callback needed), then manually
+						// send LVN_GETDISPINFOA to the parent so the game's handler fills in the text.
+						LVITEMA lvParam = {};
+						lvParam.mask = LVIF_PARAM;
+						lvParam.iItem = lpDrawItem->itemID;
+						SendMessage(lpDrawItem->hwndItem, LVM_GETITEMA, 0, (LPARAM)&lvParam);
+
+						auto idFrom = static_cast<UINT_PTR>(GetDlgCtrlID(lpDrawItem->hwndItem));
+						HWND hParent = GetParent(lpDrawItem->hwndItem);
+
+						NMLVDISPINFOA di = {};
+						di.hdr.hwndFrom = lpDrawItem->hwndItem;
+						di.hdr.idFrom = idFrom;
+						di.hdr.code = LVN_GETDISPINFOA;
+						di.item.mask = LVIF_TEXT;
+						di.item.iItem = lpDrawItem->itemID;
+						di.item.iSubItem = 0;
+						di.item.lParam = lvParam.lParam;
+						di.item.pszText = FileName;
+						di.item.cchTextMax = SIZEBUF;
+						SendMessage(hParent, WM_NOTIFY, (WPARAM)idFrom, (LPARAM)&di);
+
+						di.item.iSubItem = 1;
+						di.item.pszText = FileType;
+						di.item.cchTextMax = SIZEBUF;
+						SendMessage(hParent, WM_NOTIFY, (WPARAM)idFrom, (LPARAM)&di);
+
+						if (lpDrawItem->itemID == 0)
+							_CONSOLE("[Wine][WM_DRAWITEM] item=0 filename=\"%s\" filetype=\"%s\" hwnd=%p lParam=%p",
+								FileName, FileType, (void*)lpDrawItem->hwndItem, (void*)lvParam.lParam);
+					}
+					else
+					{
+						ListView_GetItemText(lpDrawItem->hwndItem, lpDrawItem->itemID, 0, FileName, SIZEBUF);
+						ListView_GetItemText(lpDrawItem->hwndItem, lpDrawItem->itemID, 1, FileType, SIZEBUF);
+					}
 
 					if (sCustomDrawPluginsHandler)
 						sCustomDrawPluginsHandler(hWindow, lpDrawItem, FileName, FileType);

@@ -63,8 +63,10 @@ namespace CKPE
 
 				ListView_SetExtendedListViewStyle(a_handle, LVS_OWNERDATA | LVS_LIST | LVS_SMALLICON | LVS_SORTDESCENDING);
 
-				// Prevent flickering & adjust width to fit file names
-				ListView_SetExtendedListViewStyleEx(a_handle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+				// Prevent flickering & adjust width to fit file names.
+				// LVS_EX_DOUBLEBUFFER breaks text delivery (LVN_GETDISPINFO) under Wine.
+				if (!CKPE_UserUseWine())
+					ListView_SetExtendedListViewStyleEx(a_handle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
 			}
 
 			void DataWindow::ToggleListView(const bool a_showResultListView) noexcept(true)
@@ -243,8 +245,13 @@ namespace CKPE
 					// Subscribe to notifications when the user types in the filter text box
 					SendMessageA(GetDlgItem(Hwnd, UI_DATA_DIALOG_FILTERBOX), EM_SETEVENTMASK, 0, ENM_CHANGE);
 
-					// Prevent flickering & adjust width to fit file names
-					ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+					// Prevent flickering & adjust width to fit file names.
+					// Under Wine, remove any LVS_EX_DOUBLEBUFFER set by the game's WM_INITDIALOG — it
+					// breaks LVN_GETDISPINFO text callbacks so item text is never delivered to the control.
+					if (CKPE_UserUseWine())
+						ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, 0);
+					else
+						ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
 
 					auto Path = EditorAPI::BSString::Utils::GetApplicationPath();
 					auto Column = GetPrivateProfileIntA("General", "Data Column 0 width", 250, (Path + "CreationKitPrefs.ini").c_str());
@@ -265,11 +272,8 @@ namespace CKPE
 
 					if (Common::UI::IsDarkTheme())
 					{
-						if (!CKPE_UserUseWine())
-						{
-							_This->m_pluginList.SetStyle(_This->m_pluginList.GetStyle() | LVS_OWNERDRAWFIXED);
-							_This->m_pluginResultList.SetStyle(_This->m_pluginResultList.GetStyle() | LVS_OWNERDRAWFIXED);
-						}
+						_This->m_pluginList.SetStyle(_This->m_pluginList.GetStyle() | LVS_OWNERDRAWFIXED);
+						_This->m_pluginResultList.SetStyle(_This->m_pluginResultList.GetStyle() | LVS_OWNERDRAWFIXED);
 
 						if ((Common::UI::GetTheme() == Common::UI::Theme_Custom) && Common::UI::NeedDarkCheck())
 							goto DarkCheckIcons;

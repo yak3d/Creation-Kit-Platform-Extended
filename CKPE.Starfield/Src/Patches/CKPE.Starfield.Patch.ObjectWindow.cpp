@@ -214,21 +214,23 @@ namespace CKPE
 					lpObjWnd->Controls.Spliter = lpObjWnd->ObjectWindow.GetControl(2157);
 					lpObjWnd->Controls.ActiveOnly = GetDlgItem(Hwnd, 5904);
 
-					// Eliminate the flicker when changing categories
-					auto StyleEx = ListView_GetExtendedListViewStyle(lpObjWnd->Controls.ItemList.Handle);
-					if ((StyleEx & LVS_EX_DOUBLEBUFFER) != LVS_EX_DOUBLEBUFFER)
+					// Eliminate the flicker when changing categories/size trees.
+					// LVS/TVS_EX_DOUBLEBUFFER breaks LVN_GETDISPINFO text callbacks under Wine.
+					if (!CKPE_UserUseWine())
 					{
-						// Eliminate the flicker when changing categories
-						StyleEx |= LVS_EX_DOUBLEBUFFER;
-						ListView_SetExtendedListViewStyleEx(lpObjWnd->Controls.ItemList.Handle, StyleEx, StyleEx);
-					}
+						auto StyleEx = ListView_GetExtendedListViewStyle(lpObjWnd->Controls.ItemList.Handle);
+						if ((StyleEx & LVS_EX_DOUBLEBUFFER) != LVS_EX_DOUBLEBUFFER)
+						{
+							StyleEx |= LVS_EX_DOUBLEBUFFER;
+							ListView_SetExtendedListViewStyleEx(lpObjWnd->Controls.ItemList.Handle, StyleEx, StyleEx);
+						}
 
-					StyleEx = TreeView_GetExtendedStyle(lpObjWnd->Controls.TreeList.Handle);
-					if ((StyleEx & TVS_EX_DOUBLEBUFFER) != TVS_EX_DOUBLEBUFFER)
-					{
-						// Eliminate the flicker when changing size trees
-						StyleEx |= TVS_EX_DOUBLEBUFFER;
-						TreeView_SetExtendedStyle(lpObjWnd->Controls.TreeList.Handle, StyleEx, StyleEx);
+						StyleEx = TreeView_GetExtendedStyle(lpObjWnd->Controls.TreeList.Handle);
+						if ((StyleEx & TVS_EX_DOUBLEBUFFER) != TVS_EX_DOUBLEBUFFER)
+						{
+							StyleEx |= TVS_EX_DOUBLEBUFFER;
+							TreeView_SetExtendedStyle(lpObjWnd->Controls.TreeList.Handle, StyleEx, StyleEx);
+						}
 					}
 		
 					ObjectWindows.emplace(Hwnd, lpObjWnd);

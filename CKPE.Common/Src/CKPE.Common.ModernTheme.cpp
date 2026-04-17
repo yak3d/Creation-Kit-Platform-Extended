@@ -292,39 +292,28 @@ namespace CKPE
 
 			// Wine-specific: comctl32 internally calls SetTextColor(hdc, 0) (black) before drawing
 			// ListView/TreeView items, overwriting any color set during NM_CUSTOMDRAW. Hook it on
-			// comctl32's GDI32 IAT and replace black-on-dark with the theme text color.
+			// comctl32's GDI32 IAT and replace black with the theme text color.
+			// NOTE: Do not check DC bkcolor here — Wine sets bkcolor=#FFFFFF on the DC while
+			// ListView_SetBkColor has set the actual control background to dark. The bkcolor
+			// brightness check would incorrectly pass black text through, making it invisible.
+			// This hook is only installed under Wine + dark theme, so always replacing black is safe.
 			static COLORREF WINAPI SetTextColorWine(HDC hdc, COLORREF color) noexcept(true)
 			{
 				if (!color)
-				{
-					auto bgColor = GetBkColor(hdc);
-					if (bgColor != CLR_INVALID)
-					{
-						auto brightness = (GetRValue(bgColor) + GetGValue(bgColor) + GetBValue(bgColor)) / 3;
-						if (brightness < 128)
-							return ::SetTextColor(hdc, UI::GetThemeSysColor(UI::ThemeColor_Text_4));
-					}
-				}
+					return ::SetTextColor(hdc, UI::GetThemeSysColor(UI::ThemeColor_Text_4));
 				return ::SetTextColor(hdc, color);
 			}
 
 			// Wine-specific: Wine's comctl32 calls SetBkColor(hdc, 0xFFFFFF) during TreeView/ListView
-			// item draws (from DrawThemeBackground / visual style painting), producing a white fill
-			// that either covers drawn text or causes light-on-white rendering. Replace pure white
-			// background with the theme dark color when the current text color is already light
-			// (confirming we are inside a dark-theme item draw).
+			// item draws, producing a white fill that either covers drawn text or causes visible
+			// light-on-white rendering. Replace pure white with the dark theme background color.
+			// NOTE: Do not check current text color here — SetBkColor may be called before
+			// SetTextColor, so the DC text color at this point is unreliable. This hook is only
+			// installed under Wine + dark theme, so always replacing white is safe.
 			static COLORREF WINAPI SetBkColorWine(HDC hdc, COLORREF color) noexcept(true)
 			{
 				if (color == RGB(0xFF, 0xFF, 0xFF))
-				{
-					auto textColor = GetTextColor(hdc);
-					if (textColor != CLR_INVALID)
-					{
-						auto brightness = (GetRValue(textColor) + GetGValue(textColor) + GetBValue(textColor)) / 3;
-						if (brightness > 128)
-							return ::SetBkColor(hdc, UI::GetThemeSysColor(UI::ThemeColor_Default));
-					}
-				}
+					return ::SetBkColor(hdc, UI::GetThemeSysColor(UI::ThemeColor_Default));
 				return ::SetBkColor(hdc, color);
 			}
 
@@ -518,6 +507,13 @@ namespace CKPE
 						break;
 					default:
 						canvas.ColorText = UI::GetThemeSysColor(UI::ThemeColor_Text_4);
+						if (CKPE_UserUseWine())
+						{
+							char buf[64] = {};
+							WideCharToMultiByte(CP_ACP, 0, pszText ? pszText : L"(null)", -1, buf, sizeof(buf) - 1, nullptr, nullptr);
+							_CONSOLE("[Wine][DrawThemeText] themeType=None part=%d state=%d text=\"%s\" rect=(%d,%d,%d,%d)",
+								iPartId, iStateId, buf, rc.left, rc.top, rc.right, rc.bottom);
+						}
 						break;
 					}
 

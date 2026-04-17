@@ -299,11 +299,15 @@ namespace CKPE
 					__This->m_ActiveObjectsOnly = GetDlgItem(Hwnd, UI_CELL_VIEW_ACTIVE_CELL_OBJECTS_CHECKBOX);
 					__This->m_SelectTypesButton = GetDlgItem(Hwnd, 5959);
 
-					// Eliminate the flicker when changing cells
-					ListView_SetExtendedListViewStyleEx(__This->m_CellListView.Handle,
-						LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
-					ListView_SetExtendedListViewStyleEx(__This->m_ObjectListView.Handle,
-						LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+					// Eliminate the flicker when changing cells.
+					// LVS_EX_DOUBLEBUFFER breaks LVN_GETDISPINFO text callbacks under Wine.
+					if (!CKPE_UserUseWine())
+					{
+						ListView_SetExtendedListViewStyleEx(__This->m_CellListView.Handle,
+							LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+						ListView_SetExtendedListViewStyleEx(__This->m_ObjectListView.Handle,
+							LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+					}
 				}
 				else if (Message == WM_SIZE)
 				{
