@@ -14,6 +14,7 @@
 #include <CKPE.Common.MemoryManager.h>
 #include <CKPE.Common.ClassicTheme.h>
 #include <CKPE.Common.ModernTheme.h>
+#include <CKPE.Common.UIVarCommon.h>
 #include <concurrent_vector.h>
 #include <unordered_set>
 #include <thread>
@@ -246,7 +247,9 @@ namespace CKPE
 						.hInstance = instance,
 						.hIcon = LoadIconA(instance, MAKEINTRESOURCE(0x13E)),				// 0x13E всегда иконка Creation Kit
 						.hCursor = LoadCursor(NULL, IDC_ARROW),
-						.hbrBackground = static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)),
+						.hbrBackground = UI::IsDarkTheme() ?
+						static_cast<HBRUSH>(UI::Comctl32GetSysColorBrush(COLOR_BTNFACE)) :
+						static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)),
 						.lpszClassName = "RTEDITLOG",
 						.hIconSm = wc.hIcon,
 					};
@@ -444,6 +447,19 @@ namespace CKPE
 			strncpy_s(format.szFaceName, _READ_OPTION_STR("Log", "sFont", "Consolas").c_str(), _TRUNCATE);
 
 			SendMessageA((HWND)_handle_richedit, EM_SETCHARFORMAT, SCF_ALL, reinterpret_cast<LPARAM>(&format));
+
+			if (UI::IsDarkTheme())
+			{
+				CHARFORMAT2A colorFormat = { 0 };
+				colorFormat.cbSize = sizeof(colorFormat);
+				colorFormat.dwMask = CFM_COLOR | CFM_CHARSET;
+				colorFormat.crTextColor = UI::GetThemeSysColor(UI::ThemeColor_Text_4);
+				colorFormat.bCharSet = (BYTE)_READ_OPTION_INT("CreationKit", "nCharset", DEFAULT_CHARSET);
+				SendMessageA((HWND)_handle_richedit, EM_SETCHARFORMAT, SCF_ALL, reinterpret_cast<LPARAM>(&colorFormat));
+				SendMessageA((HWND)_handle_richedit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&colorFormat));
+				SendMessageA((HWND)_handle_richedit, EM_SETBKGNDCOLOR, FALSE, UI::GetThemeSysColor(UI::ThemeColor_Edit_Color));
+			}
+
 			//Подписаться на EN_MSGFILTER и EN_SELCHANGE
 			SendMessageA((HWND)_handle_richedit, EM_SETEVENTMASK, 0, ENM_MOUSEEVENTS | ENM_SELCHANGE);
 
