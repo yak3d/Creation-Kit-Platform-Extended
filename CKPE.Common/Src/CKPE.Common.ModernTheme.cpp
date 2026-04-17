@@ -1615,6 +1615,42 @@ namespace CKPE
 					}
 				}
 				break;
+			case ODT_COMBOBOX:
+			{
+				if (!CKPE_UserUseWine())
+					break;
+
+				auto hdc = lpdis->hDC;
+				BOOL selected = (lpdis->itemState & ODS_SELECTED) != 0;
+				BOOL disabled = (lpdis->itemState & ODS_DISABLED) != 0;
+
+				Canvas canvas(hdc);
+				canvas.Fill(lpdis->rcItem,
+					selected ? UI::GetThemeSysColor(UI::ThemeColor_SelectedItem_Back)
+					         : UI::GetThemeSysColor(UI::ThemeColor_Default));
+
+				if (lpdis->itemID != (UINT)-1)
+				{
+					char text[512] = {};
+					SendMessageA((HWND)lpdis->hwndItem, CB_GETLBTEXT, lpdis->itemID,
+						reinterpret_cast<LPARAM>(text));
+
+					auto f = UI::ThemeData::GetSingleton()->ThemeFont;
+					canvas.Font.Assign(*f);
+					canvas.TransparentMode = true;
+					canvas.ColorText = selected ? UI::GetThemeSysColor(UI::ThemeColor_SelectedItem_Text)
+						: (disabled ? UI::GetThemeSysColor(UI::ThemeColor_Text_1)
+						            : UI::GetThemeSysColor(UI::ThemeColor_Text_4));
+
+					CRECT rcText = lpdis->rcItem;
+					rcText.Inflate(-2, -1);
+					canvas.TextRect(rcText, text,
+						DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS);
+					canvas.TransparentMode = false;
+				}
+
+				return TRUE;
+			}
 				}
 			}
 			break;
@@ -1811,7 +1847,7 @@ namespace CKPE
 						}
 
 						// Under Wine, WM_CREATE is skipped to avoid comctl32 corruption.
-						// Initialize child ListView/TreeView controls here instead.
+						// Initialize and theme child controls here instead.
 						if (CKPE_UserUseWine())
 						{
 							EnumChildWindows(messageData->hwnd, [](HWND child, LPARAM) -> BOOL
@@ -1828,6 +1864,27 @@ namespace CKPE
 								case ThemeType::TreeView:
 									scrollBarTheme = UI::TreeView::Initialize(child);
 									PostMessageA(child, WM_SETFONT, (WPARAM)f->Handle, TRUE);
+									break;
+								case ThemeType::ComboBox:
+								{
+									// UxTheme hooks fail under Wine; force owner-draw so WM_DRAWITEM
+									// can paint face and list items with dark theme colors.
+									auto style = GetWindowLongA(child, GWL_STYLE);
+									if (!(style & (CBS_OWNERDRAWFIXED | CBS_OWNERDRAWVARIABLE)))
+									{
+										LRESULT faceH = SendMessageA(child, CB_GETITEMHEIGHT, (WPARAM)-1, 0);
+										LRESULT itemH = SendMessageA(child, CB_GETITEMHEIGHT, 0, 0);
+										SetWindowLongA(child, GWL_STYLE, style | CBS_OWNERDRAWFIXED);
+										if (faceH > 0) SendMessageA(child, CB_SETITEMHEIGHT, (WPARAM)-1, faceH);
+										if (itemH > 0) SendMessageA(child, CB_SETITEMHEIGHT, 0, itemH);
+										InvalidateRect(child, nullptr, TRUE);
+									}
+								}
+								break;
+								case ThemeType::Button:
+									// Force classic GDI; Wine's classic button respects WM_CTLCOLORBTN
+									// so the parent subclass can supply a dark background brush.
+									SetWindowTheme(child, L"", L"");
 									break;
 								default:
 									break;
