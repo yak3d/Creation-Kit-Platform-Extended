@@ -13,6 +13,7 @@
 #include <CKPE.Common.UITreeView.h>
 #include <CKPE.Common.UIVarCommon.h>
 #include <CKPE.Common.UIComboBox.h>
+#include <CKPE.Common.UICheckBox.h>
 #include <CKPE.Common.UIPushButton.h>
 #include <CKPE.Graphics.h>
 
@@ -214,6 +215,9 @@ static void ApplyDarkThemeToRichEdit(HWND hWnd) noexcept(true)
     SendMessageA(hWnd, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&fmt));
 }
 
+static HIMAGELIST CreateDarkCheckboxImageList(HWND hTreeView) noexcept(true);
+static LRESULT CALLBACK WineTreeViewPaintSubclass(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR) noexcept(true);
+
 // ---------------------------------------------------------------------------
 // OnInitDialog — walk child controls and apply Wine-specific overrides
 // ---------------------------------------------------------------------------
@@ -236,6 +240,18 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
             UI::TreeView::Initialize(child);
             auto f = UI::ThemeData::GetSingleton()->ThemeFont;
             PostMessageA(child, WM_SETFONT, reinterpret_cast<WPARAM>(f->Handle), TRUE);
+
+            if (GetWindowLongW(child, GWL_STYLE) & TVS_CHECKBOXES)
+            {
+                HIMAGELIST hIml = CreateDarkCheckboxImageList(child);
+                if (hIml)
+                {
+                    HIMAGELIST hOld = TreeView_SetImageList(child, hIml, TVSIL_STATE);
+                    if (hOld) ImageList_Destroy(hOld);
+                }
+            }
+
+            SetWindowSubclass(child, WineTreeViewPaintSubclass, 1, 0);
         }
         else if (_wcsicmp(cls, L"ComboBox") == 0)
         {
@@ -257,6 +273,122 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
 
         return TRUE;
     }, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Dark checkbox state image list for TreeViews with TVS_CHECKBOXES.
+// Wine draws the default state images using GetSysColor(COLOR_WINDOW) → white.
+// We replace them with properly themed bitmaps after Initialize.
+// ---------------------------------------------------------------------------
+
+static HIMAGELIST CreateDarkCheckboxImageList(HWND hTreeView) noexcept(true)
+{
+    int cx = 16, cy = 16;
+    HIMAGELIST hExisting = TreeView_GetImageList(hTreeView, TVSIL_STATE);
+    if (hExisting)
+        ImageList_GetIconSize(hExisting, &cx, &cy);
+
+    HIMAGELIST hIml = ImageList_Create(cx, cy, ILC_COLOR32, 3, 0);
+    if (!hIml) return nullptr;
+
+    HDC hdcScreen = GetDC(nullptr);
+    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+    COLORREF bkColor = UI::GetThemeSysColor(UI::ThemeColor_TreeView_Color);
+    RECT rc = { 0, 0, cx, cy };
+
+    auto addImage = [&](bool drawBox, bool drawMark)
+    {
+        HBITMAP hBmp = CreateCompatibleBitmap(hdcScreen, cx, cy);
+        HGDIOBJ hOld = SelectObject(hdcMem, hBmp);
+
+        HBRUSH hbr = CreateSolidBrush(bkColor);
+        FillRect(hdcMem, &rc, hbr);
+        DeleteObject(hbr);
+
+        if (drawBox)
+        {
+            Canvas canvas(hdcMem);
+            UI::PushButton::Render::DrawPushButton_Normal(canvas, &rc);
+            if (drawMark)
+                UI::CheckBox::Render::DrawCheck_Normal(canvas, &rc);
+        }
+
+        SelectObject(hdcMem, hOld);
+        ImageList_Add(hIml, hBmp, nullptr);
+        DeleteObject(hBmp);
+    };
+
+    addImage(false, false);  // index 0: blank (state 0 = no checkbox)
+    addImage(true,  false);  // index 1: unchecked box
+    addImage(true,  true);   // index 2: checked box
+
+    DeleteDC(hdcMem);
+    ReleaseDC(nullptr, hdcScreen);
+
+    return hIml;
+}
+
+// ---------------------------------------------------------------------------
+// WineTreeViewPaintSubclass (id=1) — post-paint pass that repaints selected
+// item labels with the dark theme selection color, since Wine's classic
+// renderer uses GetSysColor(COLOR_HIGHLIGHT) → light blue.
+// ---------------------------------------------------------------------------
+
+static LRESULT CALLBACK WineTreeViewPaintSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+    UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, WineTreeViewPaintSubclass, uIdSubclass);
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    if (uMsg != WM_PAINT)
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+    LRESULT result = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+    HDC hdc = GetDC(hWnd);
+    if (!hdc) return result;
+
+    HFONT hFont = static_cast<HFONT>(UI::ThemeData::GetSingleton()->ThemeFont->Handle);
+    HGDIOBJ hOldFont = SelectObject(hdc, hFont);
+
+    COLORREF selBk = UI::GetThemeSysColor(UI::ThemeColor_SelectedItem_Back);
+    COLORREF selTx = UI::GetThemeSysColor(UI::ThemeColor_SelectedItem_Text);
+
+    HTREEITEM hItem = TreeView_GetFirstVisible(hWnd);
+    while (hItem)
+    {
+        if (TreeView_GetItemState(hWnd, hItem, TVIS_SELECTED) & TVIS_SELECTED)
+        {
+            RECT rcLabel = {};
+            if (TreeView_GetItemRect(hWnd, hItem, &rcLabel, TRUE))
+            {
+                HBRUSH hbr = CreateSolidBrush(selBk);
+                FillRect(hdc, &rcLabel, hbr);
+                DeleteObject(hbr);
+
+                wchar_t text[512] = {};
+                TVITEMW tvi = {};
+                tvi.mask = TVIF_TEXT;
+                tvi.hItem = hItem;
+                tvi.pszText = text;
+                tvi.cchTextMax = static_cast<int>(ARRAYSIZE(text));
+                SendMessageW(hWnd, TVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&tvi));
+
+                SetBkMode(hdc, TRANSPARENT);
+                SetTextColor(hdc, selTx);
+                DrawTextW(hdc, text, -1, &rcLabel,
+                    DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
+            }
+        }
+        hItem = TreeView_GetNextVisible(hWnd, hItem);
+    }
+
+    SelectObject(hdc, hOldFont);
+    ReleaseDC(hWnd, hdc);
+    return result;
 }
 
 // ---------------------------------------------------------------------------
