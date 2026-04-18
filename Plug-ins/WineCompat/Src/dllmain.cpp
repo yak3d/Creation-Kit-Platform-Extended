@@ -7,6 +7,7 @@
 #include <commctrl.h>
 #include <richedit.h>
 #include <uxtheme.h>
+#include <atomic>
 
 #include <CKPE.PathUtils.h>
 #include <CKPE.PluginAPI.PluginAPI.h>
@@ -25,14 +26,13 @@ using namespace CKPE::Common;
 
 static void DrawNcScrollBars(HWND hWnd, HDC hdc) noexcept(true);
 static bool TryHandleScrollBarClick(HWND hWnd, WPARAM wParam, LPARAM lParam) noexcept(true);
+static BOOL WINAPI HookedSetScrollInfo(HWND hwnd, int nBar, LPCSCROLLINFO lpsi, BOOL bRedraw) noexcept(true);
 
 static constexpr UINT     WM_WINECOMPAT_RESTYLE    = WM_APP + 0x201;
 static constexpr UINT     WM_WINECOMPAT_SCROLLDRAW = WM_APP + 0x202;
 
-// Set to the HWND being thumb-dragged. WM_NCPAINT skips DefSubclassProc while
-// this is set, preventing Wine's SetScrollInfo(redraw=TRUE) from firing a
-// system-colored scrollbar draw mid-drag.
-static HWND s_thumbDragHwnd = nullptr;
+static decltype(&::SetScrollInfo) g_realSetScrollInfo = ::SetScrollInfo;
+
 
 // ---------------------------------------------------------------------------
 // Button subclass — overdraw the face with the dark theme
@@ -333,9 +333,6 @@ static LRESULT CALLBACK EditSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
     if (uMsg == WM_NCPAINT ||
         uMsg == WM_NCMOUSEMOVE || uMsg == WM_NCMOUSELEAVE)
     {
-        if (uMsg != WM_NCPAINT || hWnd != s_thumbDragHwnd)
-            DefSubclassProc(hWnd, uMsg, wParam, lParam);
-
         HDC hdc = GetWindowDC(hWnd);
         if (hdc)
         {
@@ -428,11 +425,35 @@ static LRESULT CALLBACK WineListViewGridSubclass(HWND hWnd, UINT uMsg, WPARAM wP
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
 
+    if (uMsg == WM_ERASEBKGND)
+    {
+        static std::atomic<int> s_lvEraseCount{ 0 };
+        int n = ++s_lvEraseCount;
+        if (n == 1)
+            PluginAPI::_MESSAGE_EX("[WineCompat] ListView {:08X}: first WM_ERASEBKGND", reinterpret_cast<uintptr_t>(hWnd));
+        HDC hdc = reinterpret_cast<HDC>(wParam);
+        RECT rc = {}; GetClientRect(hWnd, &rc);
+        COLORREF bk = ListView_GetBkColor(hWnd);
+        if (bk == CLR_NONE || bk == static_cast<COLORREF>(-1))
+            bk = UI::GetThemeSysColor(UI::ThemeColor_ListView_Color);
+        HBRUSH br = ::CreateSolidBrush(bk);
+        FillRect(hdc, &rc, br);
+        DeleteObject(br);
+        return 1;
+    }
+
+    if (uMsg == WM_VSCROLL || uMsg == WM_HSCROLL ||
+        uMsg == WM_MOUSEWHEEL || uMsg == WM_MOUSEHWHEEL)
+    {
+        LockWindowUpdate(hWnd);
+        LRESULT r = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+        LockWindowUpdate(nullptr);
+        return r;
+    }
+
     if (uMsg == WM_NCPAINT ||
         uMsg == WM_NCMOUSEMOVE || uMsg == WM_NCMOUSELEAVE)
     {
-        if (uMsg != WM_NCPAINT || hWnd != s_thumbDragHwnd)
-            DefSubclassProc(hWnd, uMsg, wParam, lParam);
         HDC hdc = GetWindowDC(hWnd);
         if (hdc) { DrawNcScrollBars(hWnd, hdc); ReleaseDC(hWnd, hdc); }
         if (uMsg == WM_NCMOUSEMOVE || uMsg == WM_NCMOUSELEAVE)
@@ -666,7 +687,6 @@ static bool TryHandleScrollBarClick(HWND hWnd, WPARAM wParam, LPARAM lParam) noe
             int travelPx  = max(1, trackSz - thumbSz);
             int lastPos   = si.nPos;
 
-            s_thumbDragHwnd = hWnd;
             SetCapture(hWnd);
 
             MSG msg = {};
@@ -713,7 +733,6 @@ static bool TryHandleScrollBarClick(HWND hWnd, WPARAM wParam, LPARAM lParam) noe
 
             if (GetCapture() == hWnd)
                 ReleaseCapture();
-            s_thumbDragHwnd = nullptr;
 
             HDC hdc = GetWindowDC(hWnd);
             if (hdc) { DrawNcScrollBars(hWnd, hdc); ReleaseDC(hWnd, hdc); }
@@ -945,13 +964,34 @@ static LRESULT CALLBACK ScrollBarPaintSubclass(HWND hWnd, UINT uMsg, WPARAM wPar
         RemoveWindowSubclass(hWnd, ScrollBarPaintSubclass, uIdSubclass);
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
+    if (uMsg == WM_ERASEBKGND)
+    {
+        static std::atomic<int> s_tvEraseCount{ 0 };
+        int n = ++s_tvEraseCount;
+        if (n == 1)
+            PluginAPI::_MESSAGE_EX("[WineCompat] TreeView {:08X}: first WM_ERASEBKGND", reinterpret_cast<uintptr_t>(hWnd));
+        HDC hdc = reinterpret_cast<HDC>(wParam);
+        RECT rc = {}; GetClientRect(hWnd, &rc);
+        COLORREF bk = TreeView_GetBkColor(hWnd);
+        if (bk == CLR_NONE || bk == static_cast<COLORREF>(-1))
+            bk = UI::GetThemeSysColor(UI::ThemeColor_TreeView_Color);
+        HBRUSH br = ::CreateSolidBrush(bk);
+        FillRect(hdc, &rc, br);
+        DeleteObject(br);
+        return 1;
+    }
+    if (uMsg == WM_VSCROLL || uMsg == WM_HSCROLL ||
+        uMsg == WM_MOUSEWHEEL || uMsg == WM_MOUSEHWHEEL)
+    {
+        LockWindowUpdate(hWnd);
+        LRESULT r = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+        LockWindowUpdate(nullptr);
+        return r;
+    }
     if (uMsg == WM_PAINT || uMsg == WM_NCPAINT ||
         uMsg == WM_NCMOUSEMOVE || uMsg == WM_NCMOUSELEAVE)
     {
-        // During thumb drag, skip DefSubclassProc for WM_NCPAINT — Wine's
-        // SetScrollInfo(redraw=TRUE) inside SB_THUMBTRACK fires WM_NCPAINT
-        // which would draw system-colored scrollbars causing flicker.
-        if (uMsg != WM_NCPAINT || hWnd != s_thumbDragHwnd)
+        if (uMsg == WM_PAINT)
             DefSubclassProc(hWnd, uMsg, wParam, lParam);
         HDC hdc = GetWindowDC(hWnd);
         if (hdc) { DrawNcScrollBars(hWnd, hdc); ReleaseDC(hWnd, hdc); }
@@ -1004,6 +1044,10 @@ static void StyleChildControls(HWND parent) noexcept(true)
             DWORD exStyle = ListView_GetExtendedListViewStyle(child);
             if (exStyle & LVS_EX_GRIDLINES)
                 ListView_SetExtendedListViewStyle(child, exStyle & ~LVS_EX_GRIDLINES);
+            ListView_SetExtendedListViewStyleEx(child, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+            DWORD dbCheck = ListView_GetExtendedListViewStyle(child);
+            PluginAPI::_MESSAGE_EX("[WineCompat] ListView {:08X}: exStyle after doublebuffer={:08X} doublebuffer_bit={}",
+                reinterpret_cast<uintptr_t>(child), dbCheck, !!(dbCheck & LVS_EX_DOUBLEBUFFER));
             SetWindowSubclass(child, WineListViewGridSubclass, 1, 0);
 
             HWND hHeader = ListView_GetHeader(child);
@@ -1021,6 +1065,10 @@ static void StyleChildControls(HWND parent) noexcept(true)
 
             UI::TreeView::Initialize(child);
             SetWindowTheme(child, nullptr, nullptr);
+            TreeView_SetExtendedStyle(child, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
+            DWORD tvDbCheck = TreeView_GetExtendedStyle(child);
+            PluginAPI::_MESSAGE_EX("[WineCompat] TreeView {:08X}: exStyle after doublebuffer={:08X} doublebuffer_bit={}",
+                reinterpret_cast<uintptr_t>(child), tvDbCheck, !!(tvDbCheck & TVS_EX_DOUBLEBUFFER));
             auto f = UI::ThemeData::GetSingleton()->ThemeFont;
             PostMessageA(child, WM_SETFONT, reinterpret_cast<WPARAM>(f->Handle), TRUE);
             SetWindowSubclass(child, ScrollBarPaintSubclass, 2, 0);
@@ -1269,6 +1317,77 @@ static LRESULT OnTreeViewCustomDraw(HWND wnd,
 }
 
 // ---------------------------------------------------------------------------
+// IAT patch — intercept comctl32's SetScrollInfo calls to suppress the
+// SCROLL_RefreshScrollBar redraw on windows we subclass. Under Wine,
+// SetScrollInfo(fRedraw=TRUE) calls GetWindowDC internally and paints
+// system-colored scrollbars before our dark overdraw runs. Forcing
+// fRedraw=FALSE for our subclassed windows then immediately painting dark
+// eliminates the flash.
+// ---------------------------------------------------------------------------
+
+static std::atomic<int> g_iatHookCallCount{ 0 };
+static std::atomic<int> g_iatHookInterceptCount{ 0 };
+
+static BOOL WINAPI HookedSetScrollInfo(HWND hwnd, int nBar, LPCSCROLLINFO lpsi, BOOL bRedraw) noexcept(true)
+{
+    int total = ++g_iatHookCallCount;
+    if (total == 1)
+        PluginAPI::_MESSAGE("[WineCompat] HookedSetScrollInfo: first call (IAT patch active)");
+
+    if (bRedraw)
+    {
+        DWORD_PTR dummy = 0;
+        if (GetWindowSubclass(hwnd, ScrollBarPaintSubclass, 2, &dummy) ||
+            GetWindowSubclass(hwnd, WineListViewGridSubclass, 1, &dummy))
+        {
+            int intercepted = ++g_iatHookInterceptCount;
+            if (intercepted == 1)
+                PluginAPI::_MESSAGE("[WineCompat] HookedSetScrollInfo: first intercept (suppressing fRedraw)");
+            BOOL r = g_realSetScrollInfo(hwnd, nBar, lpsi, FALSE);
+            HDC hdc = GetWindowDC(hwnd);
+            if (hdc) { DrawNcScrollBars(hwnd, hdc); ReleaseDC(hwnd, hdc); }
+            return r;
+        }
+    }
+    return g_realSetScrollInfo(hwnd, nBar, lpsi, bRedraw);
+}
+
+static void PatchComctl32ImportTable() noexcept(true)
+{
+    HMODULE hComctl32 = GetModuleHandleW(L"comctl32.dll");
+    if (!hComctl32) return;
+
+    auto target = reinterpret_cast<ULONG_PTR>(
+        GetProcAddress(GetModuleHandleW(L"user32.dll"), "SetScrollInfo"));
+    if (!target) return;
+
+    auto* pDos = reinterpret_cast<PIMAGE_DOS_HEADER>(hComctl32);
+    auto* pNt  = reinterpret_cast<PIMAGE_NT_HEADERS>(
+        reinterpret_cast<BYTE*>(hComctl32) + pDos->e_lfanew);
+    auto& impDir = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    auto* pDesc  = reinterpret_cast<PIMAGE_IMPORT_DESCRIPTOR>(
+        reinterpret_cast<BYTE*>(hComctl32) + impDir.VirtualAddress);
+
+    for (; pDesc->Name; pDesc++)
+    {
+        auto* pThunk = reinterpret_cast<PIMAGE_THUNK_DATA>(
+            reinterpret_cast<BYTE*>(hComctl32) + pDesc->FirstThunk);
+        for (; pThunk->u1.Function; pThunk++)
+        {
+            if (pThunk->u1.Function != target) continue;
+            DWORD oldProt = 0;
+            VirtualProtect(&pThunk->u1.Function, sizeof(ULONG_PTR), PAGE_READWRITE, &oldProt);
+            g_realSetScrollInfo = reinterpret_cast<decltype(g_realSetScrollInfo)>(target);
+            pThunk->u1.Function = reinterpret_cast<ULONG_PTR>(HookedSetScrollInfo);
+            VirtualProtect(&pThunk->u1.Function, sizeof(ULONG_PTR), oldProt, &oldProt);
+            PluginAPI::_MESSAGE("[WineCompat] Patched comctl32 SetScrollInfo IAT");
+            return;
+        }
+    }
+    PluginAPI::_WARNING("[WineCompat] SetScrollInfo IAT entry not found in comctl32");
+}
+
+// ---------------------------------------------------------------------------
 // Plugin entry points
 // ---------------------------------------------------------------------------
 
@@ -1346,6 +1465,8 @@ extern "C"
 
         mh->RegisterInitDialogHook(OnInitDialog, nullptr);
         to->SetTreeViewCustomDraw(OnTreeViewCustomDraw, nullptr);
+
+        PatchComctl32ImportTable();
 
         PluginAPI::_MESSAGE("WineCompat: hooks registered");
         return true;
