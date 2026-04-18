@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <windows.h>
 #include <CKPE.Common.Common.h>
 
 namespace CKPE
@@ -28,6 +29,12 @@ namespace CKPE
 			static void InitializeCurrentThread() noexcept(true);
 			static void InitializeThread(uint32_t u32ThreadId) noexcept(true);
 			static void ApplyDarkThemeForWindow(void* hWnd) noexcept(true);
+
+			using OnInitDialogFn = void(*)(HWND dlg, void* userdata);
+			using OnControlCreatedFn = void(*)(HWND wnd, const wchar_t* className, void* userdata);
+
+			static void RegisterInitDialogHook(OnInitDialogFn fn, void* userdata) noexcept(true);
+			static void RegisterControlCreatedHook(OnControlCreatedFn fn, void* userdata) noexcept(true);
 
 			static ModernTheme* GetSingleton() noexcept(true);
 		public:

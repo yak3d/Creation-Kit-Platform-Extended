@@ -17,10 +17,13 @@ namespace CKPE
 		{
 			namespace TreeView
 			{
+				typedef LRESULT(*OnCustomDrawHandler)(HWND hWindow, LPNMLVCUSTOMDRAW lpTreeView, bool& bReturn);
+
 				CKPE_COMMON_API HTHEME Initialize(HWND hWindow) noexcept(true);
 				CKPE_COMMON_API LRESULT CALLBACK TreeViewSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
 					UINT_PTR uIdSubclass, DWORD_PTR dwRefData) noexcept(true);
 				CKPE_COMMON_API LRESULT OnCustomDraw(HWND hWindow, LPNMLVCUSTOMDRAW lpTreeView) noexcept(true);
+				CKPE_COMMON_API void InstallCustomDrawHandler(OnCustomDrawHandler handler) noexcept(true);
 			}
 		}
 	}

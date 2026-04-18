@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <windows.h>
+#include <commctrl.h>
+
 #ifdef CKPEPLUGINAPI_EXPORTS
 #	define CKPE_PLUGINAPI_API __declspec(dllexport)
 #else

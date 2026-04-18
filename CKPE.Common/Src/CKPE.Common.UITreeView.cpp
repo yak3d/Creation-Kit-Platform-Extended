@@ -19,6 +19,7 @@ namespace CKPE
 			{
 				static CRECT rc, rc2;
 				static CKPE::Canvas Canvas(nullptr);
+				static OnCustomDrawHandler sCustomDrawHandler = nullptr;
 
 				CKPE_COMMON_API HTHEME Initialize(HWND hWindow) noexcept(true)
 				{
@@ -112,8 +113,20 @@ namespace CKPE
 					return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 				}
 
+				CKPE_COMMON_API void InstallCustomDrawHandler(OnCustomDrawHandler handler) noexcept(true)
+				{
+					sCustomDrawHandler = handler;
+				}
+
 				CKPE_COMMON_API LRESULT OnCustomDraw(HWND hWindow, LPNMLVCUSTOMDRAW lpTreeView) noexcept(true)
 				{
+					if (sCustomDrawHandler)
+					{
+						bool NeedReturned = false;
+						auto Result = sCustomDrawHandler(hWindow, lpTreeView, NeedReturned);
+						if (NeedReturned) return Result;
+					}
+
 					// Under Wine, NM_CUSTOMDRAW interferes with native rendering.
 					// Colors are set via TreeView_SetTextColor/SetBkColor in Initialize.
 					if (CKPE_UserUseWine())

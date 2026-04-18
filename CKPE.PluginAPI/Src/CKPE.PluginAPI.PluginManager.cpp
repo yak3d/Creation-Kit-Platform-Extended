@@ -9,8 +9,12 @@
 #include <CKPE.ErrorHandler.h>
 #include <CKPE.StringUtils.h>
 #include <CKPE.PathUtils.h>
+#include <CKPE.Utils.h>
 #include <CKPE.Common.Interface.h>
 #include <CKPE.Common.DialogManager.h>
+#include <CKPE.Common.ModernTheme.h>
+#include <CKPE.Common.UIListView.h>
+#include <CKPE.Common.UITreeView.h>
 #include <CKPE.PluginAPI.PluginManager.h>
 
 namespace CKPE
@@ -19,6 +23,67 @@ namespace CKPE
 	{
 		static CKPEPluginHandle _currentHandle = 0;
 		static PluginManager _PluginManager{};
+
+		static CKPERuntimeInterface _RuntimeInterface
+		{
+			CKPERuntimeInterface::kInterfaceVersion,
+			_RuntimeInterface.IsUserUsingWine = []() { return CKPE_UserUseWine(); },
+		};
+
+		static CKPEMessageHookInterface _MessageHookInterface
+		{
+			CKPEMessageHookInterface::kInterfaceVersion,
+			_MessageHookInterface.RegisterInitDialogHook =
+				[](CKPEMessageHookInterface::OnInitDialogFn fn, void* ud)
+				{
+					Common::ModernTheme::RegisterInitDialogHook(
+						reinterpret_cast<Common::ModernTheme::OnInitDialogFn>(fn), ud);
+				},
+			_MessageHookInterface.RegisterControlCreatedHook =
+				[](CKPEMessageHookInterface::OnControlCreatedFn fn, void* ud)
+				{
+					Common::ModernTheme::RegisterControlCreatedHook(
+						reinterpret_cast<Common::ModernTheme::OnControlCreatedFn>(fn), ud);
+				},
+		};
+
+		static CKPEThemeOverrideInterface::CustomDrawFn _sLVCustomDraw = nullptr;
+		static void* _sLVCustomDrawUd = nullptr;
+		static CKPEThemeOverrideInterface::CustomDrawFn _sTVCustomDraw = nullptr;
+		static void* _sTVCustomDrawUd = nullptr;
+
+		static CKPEThemeOverrideInterface _ThemeOverrideInterface
+		{
+			CKPEThemeOverrideInterface::kInterfaceVersion,
+			_ThemeOverrideInterface.SetListViewCustomDraw =
+				[](CKPEThemeOverrideInterface::CustomDrawFn fn, void* ud)
+				{
+					_sLVCustomDraw = fn;
+					_sLVCustomDrawUd = ud;
+					Common::UI::ListView::InstallCustomDrawHandler(
+						[](HWND wnd, LPNMLVCUSTOMDRAW lpcd, bool& bReturn) -> LRESULT {
+							if (!_sLVCustomDraw) { bReturn = false; return 0; }
+							bReturn = true;
+							return _sLVCustomDraw(wnd, lpcd, &bReturn, _sLVCustomDrawUd);
+						});
+				},
+			_ThemeOverrideInterface.SetTreeViewCustomDraw =
+				[](CKPEThemeOverrideInterface::CustomDrawFn fn, void* ud)
+				{
+					_sTVCustomDraw = fn;
+					_sTVCustomDrawUd = ud;
+					Common::UI::TreeView::InstallCustomDrawHandler(
+						[](HWND wnd, LPNMLVCUSTOMDRAW lpcd, bool& bReturn) -> LRESULT {
+							if (!_sTVCustomDraw) { bReturn = false; return 0; }
+							bReturn = true;
+							return _sTVCustomDraw(wnd, lpcd, &bReturn, _sTVCustomDrawUd);
+						});
+				},
+			_ThemeOverrideInterface.ClearListViewCustomDraw =
+				[]() { _sLVCustomDraw = nullptr; Common::UI::ListView::InstallCustomDrawHandler(nullptr); },
+			_ThemeOverrideInterface.ClearTreeViewCustomDraw =
+				[]() { _sTVCustomDraw = nullptr; Common::UI::TreeView::InstallCustomDrawHandler(nullptr); },
+		};
 
 		static CKPEDialogManagerInterface _DialogManagerInterface
 		{
@@ -75,6 +140,12 @@ namespace CKPE
 			{
 			case kInterface_DialogManager:
 				return (void*)&_DialogManagerInterface;
+			case kInterface_Runtime:
+				return (void*)&_RuntimeInterface;
+			case kInterface_MessageHook:
+				return (void*)&_MessageHookInterface;
+			case kInterface_ThemeOverride:
+				return (void*)&_ThemeOverrideInterface;
 			default:
 				return nullptr;
 			}

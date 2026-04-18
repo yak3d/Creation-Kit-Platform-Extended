@@ -207,6 +207,11 @@ namespace CKPE
 		concurrency::concurrent_unordered_map<HTHEME, ThemeType, std::hash<HTHEME>, std::equal_to<HTHEME>> ThemeHandles;
 
 		static HHOOK g_hkWndProcModernThemeHandle = nullptr;
+
+		static ModernTheme::OnInitDialogFn    _sInitDialogHook          = nullptr;
+		static void*                           _sInitDialogHookUserdata  = nullptr;
+		static ModernTheme::OnControlCreatedFn _sControlCreatedHook      = nullptr;
+		static void*                           _sControlCreatedHookData  = nullptr;
 		static WNDPROC OldPopupMenuWndClass = nullptr;
 		static Font* listFont = nullptr;
 		static HBRUSH g_brItemBackground = nullptr;
@@ -1841,6 +1846,13 @@ namespace CKPE
 								}
 							}
 						}
+
+						if (_sControlCreatedHook)
+						{
+							wchar_t className[256] = {};
+							GetClassNameW(messageData->hwnd, className, ARRAYSIZE(className));
+							_sControlCreatedHook(messageData->hwnd, className, _sControlCreatedHookData);
+						}
 						break;
 					}
 					case WM_INITDIALOG:
@@ -1870,44 +1882,8 @@ namespace CKPE
 								wnd->second = true;
 						}
 
-						// Under Wine, WM_CREATE is skipped to avoid comctl32 corruption.
-						// Initialize and theme child controls here instead.
-						if (CKPE_UserUseWine())
-						{
-							EnumChildWindows(messageData->hwnd, [](HWND child, LPARAM) -> BOOL
-							{
-								auto themeType = GetThemeTypeFromWindow(child);
-								auto f = UI::ThemeData::GetSingleton()->ThemeFont;
-								HTHEME scrollBarTheme = nullptr;
-								switch (themeType)
-								{
-								case ThemeType::ListView:
-									scrollBarTheme = UI::ListView::Initialize(child);
-									PostMessageA(child, WM_SETFONT, (WPARAM)f->Handle, TRUE);
-									break;
-								case ThemeType::TreeView:
-									scrollBarTheme = UI::TreeView::Initialize(child);
-									PostMessageA(child, WM_SETFONT, (WPARAM)f->Handle, TRUE);
-									break;
-								case ThemeType::ComboBox:
-									// CBS_DROPDOWNLIST face uses GetSysColor directly (IAT hook
-									// fails under Wine). Subclass to overdraw face after default paint.
-									SetWindowTheme(child, L"", L"");
-									SetWindowSubclass(child, APIHook::ComboBoxSubclassWine, 0, 0);
-									break;
-								case ThemeType::Button:
-									// Force classic GDI; Wine's classic button respects WM_CTLCOLORBTN
-									// so the parent subclass can supply a dark background brush.
-									SetWindowTheme(child, L"", L"");
-									break;
-								default:
-									break;
-								}
-								if (scrollBarTheme)
-									RegisterThemeHandle(scrollBarTheme, ThemeType::ScrollBar);
-								return TRUE;
-							}, 0);
-						}
+						if (_sInitDialogHook)
+							_sInitDialogHook(messageData->hwnd, _sInitDialogHookUserdata);
 
 						break;
 					}
@@ -1943,6 +1919,18 @@ namespace CKPE
 		ModernTheme* ModernTheme::GetSingleton() noexcept(true)
 		{
 			return _smoderntheme;
+		}
+
+		void ModernTheme::RegisterInitDialogHook(OnInitDialogFn fn, void* userdata) noexcept(true)
+		{
+			_sInitDialogHook         = fn;
+			_sInitDialogHookUserdata = userdata;
+		}
+
+		void ModernTheme::RegisterControlCreatedHook(OnControlCreatedFn fn, void* userdata) noexcept(true)
+		{
+			_sControlCreatedHook     = fn;
+			_sControlCreatedHookData = userdata;
 		}
 
 		void ModernTheme::Hook::Initialize(bool support_more_theme) noexcept(true)

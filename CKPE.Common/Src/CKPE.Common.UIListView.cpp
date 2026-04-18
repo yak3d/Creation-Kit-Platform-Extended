@@ -243,18 +243,12 @@ namespace CKPE
 							else
 								lpListView->clrText = GetThemeSysColor(ThemeColor_Text_4);
 
-							// Under Wine, CDRF_NEWFONT causes the struct colors to be ignored.
-							// Set the DC text color directly so Wine uses it during item draw.
-							if (CKPE_UserUseWine())
-								SetTextColor(lpListView->nmcd.hdc, lpListView->clrText);
+							SetTextColor(lpListView->nmcd.hdc, lpListView->clrText);
 							return CDRF_NEWFONT;
 						}
 
 						lpListView->clrText = GetThemeSysColor(ThemeColor_Text_4);
-						// Under Wine, CDRF_NEWFONT causes the struct colors to be ignored.
-						// Set the DC text color directly so Wine uses it during item draw.
-						if (CKPE_UserUseWine())
-							SetTextColor(lpListView->nmcd.hdc, lpListView->clrText);
+						SetTextColor(lpListView->nmcd.hdc, lpListView->clrText);
 						return CDRF_NEWFONT;
 					}
 					default:

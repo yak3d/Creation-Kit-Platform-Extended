@@ -66,6 +66,9 @@ namespace CKPE
 		{
 			kInterface_Invalid = 0,
 			kInterface_DialogManager,
+			kInterface_Runtime,
+			kInterface_MessageHook,
+			kInterface_ThemeOverride,
 		};
 
 		struct CKPEDialogManagerInterface
@@ -90,6 +93,47 @@ namespace CKPE
 			// In essence, it is ".zip" renamed to ".pak" (a reference to the game Quake III Arena).
 			// Unlike AddDialog and AddDialogByCode, in case of an error, it will generate a RuntimeError and write the error to the CKPE log itself.
 			bool (*LoadFromFilePackage)(const char* filename);
+		};
+
+		struct CKPERuntimeInterface
+		{
+			enum : std::uint32_t { kInterfaceVersion = 1 };
+			std::uint32_t InterfaceVersion;
+
+			// Returns true if the editor is running under Wine.
+			bool (*IsUserUsingWine)();
+		};
+
+		struct CKPEMessageHookInterface
+		{
+			enum : std::uint32_t { kInterfaceVersion = 1 };
+			std::uint32_t InterfaceVersion;
+
+			// Fired once per dialog after WM_INITDIALOG is processed.
+			// Use to walk child controls and install Wine-specific subclasses.
+			using OnInitDialogFn = void(*)(HWND dlg, void* userdata);
+
+			// Fired for each top-level window at WM_CREATE time (non-Wine path).
+			// Under Wine, WM_CREATE is suppressed; use OnInitDialog instead.
+			using OnControlCreatedFn = void(*)(HWND wnd, const wchar_t* className, void* userdata);
+
+			void (*RegisterInitDialogHook)(OnInitDialogFn fn, void* userdata);
+			void (*RegisterControlCreatedHook)(OnControlCreatedFn fn, void* userdata);
+		};
+
+		struct CKPEThemeOverrideInterface
+		{
+			enum : std::uint32_t { kInterfaceVersion = 1 };
+			std::uint32_t InterfaceVersion;
+
+			// Called first in NM_CUSTOMDRAW handlers. Return a CDRF_* value.
+			// Set *handled = true to skip the default draw path entirely.
+			using CustomDrawFn = LRESULT(*)(HWND wnd, LPNMLVCUSTOMDRAW lpcd, bool* handled, void* userdata);
+
+			void (*SetListViewCustomDraw)(CustomDrawFn fn, void* userdata);
+			void (*SetTreeViewCustomDraw)(CustomDrawFn fn, void* userdata);
+			void (*ClearListViewCustomDraw)();
+			void (*ClearTreeViewCustomDraw)();
 		};
 
 		CKPE_PLUGINAPI_API extern Logger UserPluginLogger;

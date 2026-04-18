@@ -53,6 +53,18 @@ namespace CKPE
 
 				switch (Message)
 				{
+				case WM_ERASEBKGND:
+					if (UI::IsDarkTheme())
+					{
+						RECT rc;
+						GetClientRect(Hwnd, &rc);
+						HBRUSH hbr = ::CreateSolidBrush(UI::GetThemeSysColor(UI::ThemeColor_Default));
+						FillRect(reinterpret_cast<HDC>(wParam), &rc, hbr);
+						DeleteObject(hbr);
+						return 1;
+					}
+					break;
+
 				case WM_CREATE:
 				{
 					try
@@ -63,7 +75,7 @@ namespace CKPE
 					catch (const std::exception& e)
 					{
 						ErrorHandler::Trigger(e.what());
-					}					
+					}
 				}
 				return 0;
 
@@ -248,7 +260,7 @@ namespace CKPE
 						.hIcon = LoadIconA(instance, MAKEINTRESOURCE(0x13E)),				// 0x13E всегда иконка Creation Kit
 						.hCursor = LoadCursor(NULL, IDC_ARROW),
 						.hbrBackground = UI::IsDarkTheme() ?
-						static_cast<HBRUSH>(UI::Comctl32GetSysColorBrush(COLOR_BTNFACE)) :
+						::CreateSolidBrush(UI::GetThemeSysColor(UI::ThemeColor_Default)) :
 						static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)),
 						.lpszClassName = "RTEDITLOG",
 						.hIconSm = wc.hIcon,
