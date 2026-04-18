@@ -504,23 +504,28 @@ static LRESULT CALLBACK HeaderSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 static HIMAGELIST CreateDarkCheckboxImageList(HWND hTreeView) noexcept(true);
 
 // ---------------------------------------------------------------------------
-// OnInitDialog — walk child controls and apply Wine-specific overrides
+// StyleChildControls — apply Wine overrides to all current children of parent.
+// Called both immediately from OnInitDialog and deferred (post-game-init).
+// Guards against double-installation so repeated calls are safe.
 // ---------------------------------------------------------------------------
 
-static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(true)
+static void StyleChildControls(HWND parent) noexcept(true)
 {
-    EnumChildWindows(dlg, [](HWND child, LPARAM) -> BOOL
+    EnumChildWindows(parent, [](HWND child, LPARAM) -> BOOL
     {
         wchar_t cls[64] = {};
         GetClassNameW(child, cls, ARRAYSIZE(cls));
 
         if (_wcsicmp(cls, WC_LISTVIEWW) == 0)
         {
+            DWORD_PTR existing = 0;
+            if (GetWindowSubclass(child, WineListViewGridSubclass, 1, &existing))
+                return TRUE;
+
             UI::ListView::Initialize(child);
             auto f = UI::ThemeData::GetSingleton()->ThemeFont;
             PostMessageA(child, WM_SETFONT, reinterpret_cast<WPARAM>(f->Handle), TRUE);
 
-            // Strip any LVS_EX_GRIDLINES already set; subclass intercepts future sets.
             DWORD exStyle = ListView_GetExtendedListViewStyle(child);
             if (exStyle & LVS_EX_GRIDLINES)
                 ListView_SetExtendedListViewStyle(child, exStyle & ~LVS_EX_GRIDLINES);
@@ -535,10 +540,11 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
         }
         else if (_wcsicmp(cls, WC_TREEVIEWW) == 0)
         {
+            DWORD_PTR existing = 0;
+            if (GetWindowSubclass(child, CKPE::Common::UI::TreeView::TreeViewSubclass, 0, &existing))
+                return TRUE;
+
             UI::TreeView::Initialize(child);
-            // Initialize sets SetWindowTheme("","") under Wine for text colors, but that
-            // also breaks the +/- expand glyphs (classic renderer uses COLOR_WINDOW → white).
-            // Restore visual styles here; text/selection colors are handled via NM_CUSTOMDRAW.
             SetWindowTheme(child, nullptr, nullptr);
             auto f = UI::ThemeData::GetSingleton()->ThemeFont;
             PostMessageA(child, WM_SETFONT, reinterpret_cast<WPARAM>(f->Handle), TRUE);
@@ -555,11 +561,17 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
         }
         else if (_wcsicmp(cls, L"Edit") == 0)
         {
+            DWORD_PTR existing = 0;
+            if (GetWindowSubclass(child, EditSubclass, 0, &existing))
+                return TRUE;
             SetWindowTheme(child, L"", L"");
             SetWindowSubclass(child, EditSubclass, 0, 0);
         }
         else if (_wcsicmp(cls, L"ComboBox") == 0)
         {
+            DWORD_PTR existing = 0;
+            if (GetWindowSubclass(child, ComboBoxSubclass, 0, &existing))
+                return TRUE;
             SetWindowTheme(child, L"", L"");
             SetWindowSubclass(child, ComboBoxSubclass, 0, 0);
         }
@@ -568,6 +580,9 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
             DWORD btnType = static_cast<DWORD>(GetWindowLongW(child, GWL_STYLE)) & BS_TYPEMASK;
             if (btnType == BS_PUSHBUTTON || btnType == BS_DEFPUSHBUTTON)
             {
+                DWORD_PTR existing = 0;
+                if (GetWindowSubclass(child, ButtonSubclass, 0, &existing))
+                    return TRUE;
                 SetWindowTheme(child, L"", L"");
                 SetWindowSubclass(child, ButtonSubclass, 0,
                     reinterpret_cast<DWORD_PTR>(new ButtonState{}));
@@ -575,6 +590,9 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
             else if (btnType == BS_CHECKBOX    || btnType == BS_AUTOCHECKBOX ||
                      btnType == BS_3STATE      || btnType == BS_AUTO3STATE)
             {
+                DWORD_PTR existing = 0;
+                if (GetWindowSubclass(child, CheckBoxSubclass, 0, &existing))
+                    return TRUE;
                 SetWindowTheme(child, L"", L"");
                 SetWindowSubclass(child, CheckBoxSubclass, 0, 0);
             }
@@ -588,6 +606,57 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
 
         return TRUE;
     }, 0);
+}
+
+// ---------------------------------------------------------------------------
+// DeferredRestyleSubclass — installed permanently on every dialog.
+//
+// Two responsibilities:
+//   1. WM_WINECOMPAT_RESTYLE (posted): runs StyleChildControls, catching
+//      controls created dynamically after WM_INITDIALOG.
+//   2. WM_NOTIFY / TCN_SELCHANGE: tab switched inside this dialog —
+//      posts WM_WINECOMPAT_RESTYLE so we restyle after the game builds
+//      the new tab's controls.
+//
+// Stays installed until WM_NCDESTROY so repeated tab switches all work.
+// ---------------------------------------------------------------------------
+
+static constexpr UINT WM_WINECOMPAT_RESTYLE = WM_APP + 0x201;
+static constexpr UINT_PTR kDeferredSubclassId = 0xBC01;
+
+static LRESULT CALLBACK DeferredRestyleSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+    UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, DeferredRestyleSubclass, uIdSubclass);
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+    if (uMsg == WM_WINECOMPAT_RESTYLE)
+    {
+        StyleChildControls(hWnd);
+        return 0;
+    }
+    if (uMsg == WM_NOTIFY)
+    {
+        auto* hdr = reinterpret_cast<NMHDR*>(lParam);
+        if (hdr && hdr->code == TCN_SELCHANGE)
+            PostMessage(hWnd, WM_WINECOMPAT_RESTYLE, 0, 0);
+    }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+// ---------------------------------------------------------------------------
+// OnInitDialog — walk child controls and apply Wine-specific overrides.
+// First pass runs immediately (before game's dialog proc); second pass is
+// posted so it runs after the game finishes creating dynamic controls.
+// ---------------------------------------------------------------------------
+
+static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(true)
+{
+    StyleChildControls(dlg);
+    SetWindowSubclass(dlg, DeferredRestyleSubclass, kDeferredSubclassId, 0);
+    PostMessage(dlg, WM_WINECOMPAT_RESTYLE, 0, 0);
 }
 
 // ---------------------------------------------------------------------------
