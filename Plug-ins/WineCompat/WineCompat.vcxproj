@@ -94,6 +94,37 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Src\dllmain.cpp" />
+    <ClCompile Include="Src\ScrollBar\ScrollBarPaint.cpp" />
+    <ClCompile Include="Src\Theme\RichEditTheme.cpp" />
+    <ClCompile Include="Src\Theme\DarkCheckboxImageList.cpp" />
+    <ClCompile Include="Src\Theme\TreeViewCustomDraw.cpp" />
+    <ClCompile Include="Src\Subclass\ButtonSubclass.cpp" />
+    <ClCompile Include="Src\Subclass\CheckBoxSubclass.cpp" />
+    <ClCompile Include="Src\Subclass\ComboBoxSubclass.cpp" />
+    <ClCompile Include="Src\Subclass\EditSubclass.cpp" />
+    <ClCompile Include="Src\Subclass\HeaderSubclass.cpp" />
+    <ClCompile Include="Src\Subclass\ListViewGridSubclass.cpp" />
+    <ClCompile Include="Src\Subclass\ScrollBarPaintSubclass.cpp" />
+    <ClCompile Include="Src\Subclass\DeferredRestyleSubclass.cpp" />
+    <ClCompile Include="Src\Iat\IatPatch.cpp" />
+    <ClCompile Include="Src\Plugin\StyleDispatcher.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\Plugin\WineCompatMessages.h" />
+    <ClInclude Include="Include\Plugin\StyleDispatcher.h" />
+    <ClInclude Include="Include\ScrollBar\ScrollBarPaint.h" />
+    <ClInclude Include="Include\Theme\RichEditTheme.h" />
+    <ClInclude Include="Include\Theme\DarkCheckboxImageList.h" />
+    <ClInclude Include="Include\Theme\TreeViewCustomDraw.h" />
+    <ClInclude Include="Include\Subclass\ButtonSubclass.h" />
+    <ClInclude Include="Include\Subclass\CheckBoxSubclass.h" />
+    <ClInclude Include="Include\Subclass\ComboBoxSubclass.h" />
+    <ClInclude Include="Include\Subclass\EditSubclass.h" />
+    <ClInclude Include="Include\Subclass\HeaderSubclass.h" />
+    <ClInclude Include="Include\Subclass\ListViewGridSubclass.h" />
+    <ClInclude Include="Include\Subclass\ScrollBarPaintSubclass.h" />
+    <ClInclude Include="Include\Subclass\DeferredRestyleSubclass.h" />
+    <ClInclude Include="Include\Iat\IatPatch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
