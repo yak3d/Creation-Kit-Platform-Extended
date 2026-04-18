@@ -261,9 +261,13 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
         }
         else if (_wcsicmp(cls, L"Button") == 0)
         {
-            SetWindowTheme(child, L"", L"");
-            SetWindowSubclass(child, ButtonSubclass, 0,
-                reinterpret_cast<DWORD_PTR>(new ButtonState{}));
+            DWORD btnType = static_cast<DWORD>(GetWindowLongW(child, GWL_STYLE)) & BS_TYPEMASK;
+            if (btnType == BS_PUSHBUTTON || btnType == BS_DEFPUSHBUTTON)
+            {
+                SetWindowTheme(child, L"", L"");
+                SetWindowSubclass(child, ButtonSubclass, 0,
+                    reinterpret_cast<DWORD_PTR>(new ButtonState{}));
+            }
         }
         else if (_wcsicmp(cls, MSFTEDIT_CLASS) == 0 ||
                  _wcsicmp(cls, L"RichEdit20A") == 0  ||
