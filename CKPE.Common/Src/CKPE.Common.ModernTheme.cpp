@@ -1264,9 +1264,69 @@ namespace CKPE
 
 				return DrawThemeBackground(hTheme, hdc, iPartId, iStateId, pRect, pClipRect);
 			}
-		}
 
-		static LRESULT CALLBACK WindowSubclassModernTheme(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+			// Wine only: CBS_DROPDOWNLIST face paints via GetSysColor (IAT hook fails under Wine).
+			// Subclass to overdraw just the text area after the default proc has run.
+			static LRESULT CALLBACK ComboBoxSubclassWine(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+				[[maybe_unused]] UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
+			{
+			if ((uMsg == WM_SETFOCUS) || (uMsg == WM_KILLFOCUS))
+				InvalidateRect(hWnd, nullptr, FALSE);
+
+			if (uMsg == WM_PAINT)
+			{
+				LRESULT result = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+				COMBOBOXINFO cbi = { sizeof(cbi) };
+				if (!GetComboBoxInfo(hWnd, &cbi))
+					return result;
+
+				HDC hdc = GetDC(hWnd);
+				if (!hdc)
+					return result;
+
+				RECT rcClient;
+				GetClientRect(hWnd, &rcClient);
+				Canvas canvas(hdc);
+
+				// Draw full control background + border using the same render path as non-Wine
+				UI::PushButton::Render::DrawPushButton_Normal(canvas, &rcClient);
+
+				// Draw the dropdown arrow button using the same render path as non-Wine
+				UI::ComboBox::Render::DrawArrow_Normal(canvas, &cbi.rcButton);
+
+				// Draw face text on top
+				LRESULT idx = SendMessage(hWnd, CB_GETCURSEL, 0, 0);
+				if (idx != CB_ERR)
+				{
+					LRESULT cch = SendMessageA(hWnd, CB_GETLBTEXTLEN, idx, 0);
+					if (cch != CB_ERR && cch > 0)
+					{
+						char text[512] = {};
+						SendMessageA(hWnd, CB_GETLBTEXT, idx, reinterpret_cast<LPARAM>(text));
+
+						auto f = UI::ThemeData::GetSingleton()->ThemeFont;
+						canvas.Font.Assign(*f);
+						canvas.TransparentMode = true;
+						canvas.ColorText = UI::GetThemeSysColor(UI::ThemeColor_Text_4);
+
+						CRECT rcText = cbi.rcItem;
+						rcText.Inflate(-2, -1);
+						canvas.TextRect(rcText, text,
+							DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS | DT_NOPREFIX);
+						canvas.TransparentMode = false;
+					}
+				}
+
+				ReleaseDC(hWnd, hdc);
+				return result;
+			}
+
+			return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+		}
+	}
+
+	static LRESULT CALLBACK WindowSubclassModernTheme(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
 			[[maybe_unused]] UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
 		{
 			static HTHEME g_menuTheme = nullptr;
@@ -1615,42 +1675,6 @@ namespace CKPE
 					}
 				}
 				break;
-			case ODT_COMBOBOX:
-			{
-				if (!CKPE_UserUseWine())
-					break;
-
-				auto hdc = lpdis->hDC;
-				BOOL selected = (lpdis->itemState & ODS_SELECTED) != 0;
-				BOOL disabled = (lpdis->itemState & ODS_DISABLED) != 0;
-
-				Canvas canvas(hdc);
-				canvas.Fill(lpdis->rcItem,
-					selected ? UI::GetThemeSysColor(UI::ThemeColor_SelectedItem_Back)
-					         : UI::GetThemeSysColor(UI::ThemeColor_Default));
-
-				if (lpdis->itemID != (UINT)-1)
-				{
-					char text[512] = {};
-					SendMessageA((HWND)lpdis->hwndItem, CB_GETLBTEXT, lpdis->itemID,
-						reinterpret_cast<LPARAM>(text));
-
-					auto f = UI::ThemeData::GetSingleton()->ThemeFont;
-					canvas.Font.Assign(*f);
-					canvas.TransparentMode = true;
-					canvas.ColorText = selected ? UI::GetThemeSysColor(UI::ThemeColor_SelectedItem_Text)
-						: (disabled ? UI::GetThemeSysColor(UI::ThemeColor_Text_1)
-						            : UI::GetThemeSysColor(UI::ThemeColor_Text_4));
-
-					CRECT rcText = lpdis->rcItem;
-					rcText.Inflate(-2, -1);
-					canvas.TextRect(rcText, text,
-						DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS);
-					canvas.TransparentMode = false;
-				}
-
-				return TRUE;
-			}
 				}
 			}
 			break;
@@ -1866,21 +1890,11 @@ namespace CKPE
 									PostMessageA(child, WM_SETFONT, (WPARAM)f->Handle, TRUE);
 									break;
 								case ThemeType::ComboBox:
-								{
-									// UxTheme hooks fail under Wine; force owner-draw so WM_DRAWITEM
-									// can paint face and list items with dark theme colors.
-									auto style = GetWindowLongA(child, GWL_STYLE);
-									if (!(style & (CBS_OWNERDRAWFIXED | CBS_OWNERDRAWVARIABLE)))
-									{
-										LRESULT faceH = SendMessageA(child, CB_GETITEMHEIGHT, (WPARAM)-1, 0);
-										LRESULT itemH = SendMessageA(child, CB_GETITEMHEIGHT, 0, 0);
-										SetWindowLongA(child, GWL_STYLE, style | CBS_OWNERDRAWFIXED);
-										if (faceH > 0) SendMessageA(child, CB_SETITEMHEIGHT, (WPARAM)-1, faceH);
-										if (itemH > 0) SendMessageA(child, CB_SETITEMHEIGHT, 0, itemH);
-										InvalidateRect(child, nullptr, TRUE);
-									}
-								}
-								break;
+									// CBS_DROPDOWNLIST face uses GetSysColor directly (IAT hook
+									// fails under Wine). Subclass to overdraw face after default paint.
+									SetWindowTheme(child, L"", L"");
+									SetWindowSubclass(child, APIHook::ComboBoxSubclassWine, 0, 0);
+									break;
 								case ThemeType::Button:
 									// Force classic GDI; Wine's classic button respects WM_CTLCOLORBTN
 									// so the parent subclass can supply a dark background brush.
