@@ -14,6 +14,7 @@
 #include <CKPE.Common.UIVarCommon.h>
 #include <CKPE.Common.UIComboBox.h>
 #include <CKPE.Common.UICheckBox.h>
+#include <CKPE.Common.UIHeader.h>
 #include <CKPE.Common.UIPushButton.h>
 #include <CKPE.Graphics.h>
 
@@ -346,6 +347,160 @@ static LRESULT CALLBACK EditSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
     return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
+// ---------------------------------------------------------------------------
+// WineListViewGridSubclass (id=1) — strips LVS_EX_GRIDLINES (Wine draws it
+// with COLOR_3DFACE → wrong color) and redraws grid lines in dark theme.
+// ---------------------------------------------------------------------------
+
+static LRESULT CALLBACK WineListViewGridSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+    UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, WineListViewGridSubclass, uIdSubclass);
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    if (uMsg == LVM_SETEXTENDEDLISTVIEWSTYLE)
+    {
+        wParam &= ~static_cast<WPARAM>(LVS_EX_GRIDLINES);
+        lParam &= ~static_cast<LPARAM>(LVS_EX_GRIDLINES);
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    if (uMsg == WM_PAINT)
+    {
+        LRESULT result = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+        HDC hdc = GetDC(hWnd);
+        if (hdc)
+        {
+            RECT rcClient;
+            GetClientRect(hWnd, &rcClient);
+
+            COLORREF lineColor = UI::GetThemeSysColor(UI::ThemeColor_Default);
+            HPEN hPen = CreatePen(PS_SOLID, 1, lineColor);
+            HGDIOBJ hOldPen = SelectObject(hdc, hPen);
+
+            int count  = ListView_GetItemCount(hWnd);
+            int first  = ListView_GetTopIndex(hWnd);
+            int perPg  = ListView_GetCountPerPage(hWnd);
+
+            // Horizontal row separators — find top of first visible item so we
+            // don't draw into the header area.
+            int bodyTop = rcClient.top;
+            if (count > 0 && first < count)
+            {
+                RECT rcFirst;
+                if (ListView_GetItemRect(hWnd, first, &rcFirst, LVIR_BOUNDS))
+                    bodyTop = rcFirst.top;
+            }
+
+            for (int i = first; i <= min(count - 1, first + perPg); i++)
+            {
+                RECT rcItem;
+                if (ListView_GetItemRect(hWnd, i, &rcItem, LVIR_BOUNDS))
+                {
+                    MoveToEx(hdc, rcClient.left, rcItem.bottom - 1, nullptr);
+                    LineTo(hdc, rcClient.right, rcItem.bottom - 1);
+                }
+            }
+
+            // Vertical column separators — positions come from the header.
+            HWND hHeader = ListView_GetHeader(hWnd);
+            if (hHeader)
+            {
+                int colCount = Header_GetItemCount(hHeader);
+                for (int i = 0; i < colCount - 1; i++)
+                {
+                    RECT rcCol;
+                    if (Header_GetItemRect(hHeader, i, &rcCol))
+                    {
+                        MoveToEx(hdc, rcCol.right - 1, bodyTop, nullptr);
+                        LineTo(hdc, rcCol.right - 1, rcClient.bottom);
+                    }
+                }
+            }
+
+            SelectObject(hdc, hOldPen);
+            DeleteObject(hPen);
+            ReleaseDC(hWnd, hdc);
+        }
+        return result;
+    }
+
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+// ---------------------------------------------------------------------------
+// Header subclass — full WM_PAINT override for ListView column headers.
+// Under Wine the uxtheme DrawThemeBackground hook fails, leaving the header
+// in the system light-grey style.
+// ---------------------------------------------------------------------------
+
+static LRESULT CALLBACK HeaderSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+    [[maybe_unused]] UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, HeaderSubclass, 0);
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    if (uMsg == WM_ERASEBKGND)
+        return 1;
+
+    if (uMsg == WM_PAINT)
+    {
+        PAINTSTRUCT ps;
+        BeginPaint(hWnd, &ps);
+
+        RECT rcClient = {};
+        GetClientRect(hWnd, &rcClient);
+
+        Canvas canvas(ps.hdc);
+        canvas.Fill(rcClient, UI::GetThemeSysColor(UI::ThemeColor_Default_Gradient_Start));
+
+        HFONT hFont = static_cast<HFONT>(UI::ThemeData::GetSingleton()->ThemeFont->Handle);
+        HGDIOBJ hOldFont = SelectObject(ps.hdc, hFont);
+        SetBkMode(ps.hdc, TRANSPARENT);
+        SetTextColor(ps.hdc, UI::GetThemeSysColor(UI::ThemeColor_Text_4));
+
+        int count = Header_GetItemCount(hWnd);
+        for (int i = 0; i < count; i++)
+        {
+            RECT rcItem = {};
+            if (!Header_GetItemRect(hWnd, i, &rcItem))
+                continue;
+
+            UI::Header::Render::DrawBack_Normal(canvas, &rcItem);
+
+            wchar_t text[256] = {};
+            HDITEMW hdi = {};
+            hdi.mask       = HDI_TEXT | HDI_FORMAT;
+            hdi.pszText    = text;
+            hdi.cchTextMax = static_cast<int>(ARRAYSIZE(text));
+            Header_GetItem(hWnd, i, &hdi);
+
+            RECT rcText = rcItem;
+            rcText.left += 6; rcText.right -= 6;
+            UINT dtFlags = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX;
+            if      (hdi.fmt & HDF_RIGHT)  dtFlags |= DT_RIGHT;
+            else if (hdi.fmt & HDF_CENTER) dtFlags |= DT_CENTER;
+            else                           dtFlags |= DT_LEFT;
+            DrawTextW(ps.hdc, text, -1, &rcText, dtFlags);
+
+            UI::Header::Render::DrawDiv(canvas, &rcItem);
+        }
+
+        SelectObject(ps.hdc, hOldFont);
+        EndPaint(hWnd, &ps);
+        return 0;
+    }
+
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
 static HIMAGELIST CreateDarkCheckboxImageList(HWND hTreeView) noexcept(true);
 
 // ---------------------------------------------------------------------------
@@ -364,6 +519,19 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
             UI::ListView::Initialize(child);
             auto f = UI::ThemeData::GetSingleton()->ThemeFont;
             PostMessageA(child, WM_SETFONT, reinterpret_cast<WPARAM>(f->Handle), TRUE);
+
+            // Strip any LVS_EX_GRIDLINES already set; subclass intercepts future sets.
+            DWORD exStyle = ListView_GetExtendedListViewStyle(child);
+            if (exStyle & LVS_EX_GRIDLINES)
+                ListView_SetExtendedListViewStyle(child, exStyle & ~LVS_EX_GRIDLINES);
+            SetWindowSubclass(child, WineListViewGridSubclass, 1, 0);
+
+            HWND hHeader = ListView_GetHeader(child);
+            if (hHeader)
+            {
+                SetWindowTheme(hHeader, L"", L"");
+                SetWindowSubclass(hHeader, HeaderSubclass, 0, 0);
+            }
         }
         else if (_wcsicmp(cls, WC_TREEVIEWW) == 0)
         {
