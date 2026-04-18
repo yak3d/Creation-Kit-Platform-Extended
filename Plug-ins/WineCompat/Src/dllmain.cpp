@@ -139,6 +139,85 @@ static LRESULT CALLBACK ButtonSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 }
 
 // ---------------------------------------------------------------------------
+// CheckBox subclass — full WM_PAINT override with dark theme box + label
+// ---------------------------------------------------------------------------
+
+static LRESULT CALLBACK CheckBoxSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+    [[maybe_unused]] UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, CheckBoxSubclass, 0);
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    if (uMsg == WM_PAINT)
+    {
+        PAINTSTRUCT ps;
+        BeginPaint(hWnd, &ps);
+
+        RECT rc;
+        GetClientRect(hWnd, &rc);
+        Canvas canvas(ps.hdc);
+
+        canvas.Fill(rc, UI::GetThemeSysColor(UI::ThemeColor_Default));
+
+        DWORD style    = static_cast<DWORD>(GetWindowLongW(hWnd, GWL_STYLE));
+        bool  disabled = (style & WS_DISABLED) != 0;
+
+        int boxW = GetSystemMetrics(SM_CXMENUCHECK);
+        int boxH = GetSystemMetrics(SM_CYMENUCHECK);
+        int boxY = ((rc.bottom - rc.top) - boxH) / 2;
+        RECT rcBox = { rc.left, boxY, rc.left + boxW, boxY + boxH };
+
+        if (disabled)
+            UI::PushButton::Render::DrawPushButton_Disabled(canvas, &rcBox);
+        else
+            UI::PushButton::Render::DrawPushButton_Normal(canvas, &rcBox);
+
+        LRESULT checkState = SendMessage(hWnd, BM_GETCHECK, 0, 0);
+        if (checkState == BST_CHECKED)
+        {
+            if (disabled) UI::CheckBox::Render::DrawCheck_Disabled(canvas, &rcBox);
+            else          UI::CheckBox::Render::DrawCheck_Normal(canvas, &rcBox);
+        }
+        else if (checkState == BST_INDETERMINATE)
+        {
+            if (disabled) UI::CheckBox::Render::DrawIdeterminate_Disabled(canvas, &rcBox);
+            else          UI::CheckBox::Render::DrawIdeterminate_Normal(canvas, &rcBox);
+        }
+
+        char text[256] = {};
+        GetWindowTextA(hWnd, text, ARRAYSIZE(text));
+        if (text[0])
+        {
+            auto f = UI::ThemeData::GetSingleton()->ThemeFont;
+            canvas.Font.Assign(*f);
+            canvas.TransparentMode = true;
+            canvas.ColorText = disabled
+                ? UI::GetThemeSysColor(UI::ThemeColor_Text_1)
+                : UI::GetThemeSysColor(UI::ThemeColor_Text_4);
+            CRECT rcText = rc;
+            rcText.Left += boxW + 4;
+            canvas.TextRect(rcText, text,
+                DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+            canvas.TransparentMode = false;
+        }
+
+        if (GetFocus() == hWnd)
+        {
+            RECT rcFocus = { rc.left + boxW + 2, rc.top + 1, rc.right - 1, rc.bottom - 1 };
+            DrawFocusRect(ps.hdc, &rcFocus);
+        }
+
+        EndPaint(hWnd, &ps);
+        return 0;
+    }
+
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+// ---------------------------------------------------------------------------
 // ComboBox subclass — overdraw the face with the dark theme after DefSubclass
 // ---------------------------------------------------------------------------
 
@@ -324,6 +403,12 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
                 SetWindowTheme(child, L"", L"");
                 SetWindowSubclass(child, ButtonSubclass, 0,
                     reinterpret_cast<DWORD_PTR>(new ButtonState{}));
+            }
+            else if (btnType == BS_CHECKBOX    || btnType == BS_AUTOCHECKBOX ||
+                     btnType == BS_3STATE      || btnType == BS_AUTO3STATE)
+            {
+                SetWindowTheme(child, L"", L"");
+                SetWindowSubclass(child, CheckBoxSubclass, 0, 0);
             }
         }
         else if (_wcsicmp(cls, MSFTEDIT_CLASS) == 0 ||
