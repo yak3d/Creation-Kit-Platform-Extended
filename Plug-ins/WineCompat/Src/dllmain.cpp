@@ -215,6 +215,58 @@ static void ApplyDarkThemeToRichEdit(HWND hWnd) noexcept(true)
     SendMessageA(hWnd, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&fmt));
 }
 
+// ---------------------------------------------------------------------------
+// Edit subclass — overdraw the non-client border with dark theme colors.
+// SetWindowTheme("","") fixes the client background (WM_CTLCOLOREDIT works)
+// but leaves a classic 3D white frame in the non-client area under Wine.
+// ---------------------------------------------------------------------------
+
+static LRESULT CALLBACK EditSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+    [[maybe_unused]] UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
+{
+    if (uMsg == WM_NCDESTROY)
+    {
+        RemoveWindowSubclass(hWnd, EditSubclass, 0);
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    if (uMsg == WM_SETFOCUS || uMsg == WM_KILLFOCUS)
+    {
+        LRESULT r = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+        RedrawWindow(hWnd, nullptr, nullptr, RDW_FRAME | RDW_INVALIDATE | RDW_UPDATENOW);
+        return r;
+    }
+
+    if (uMsg == WM_NCPAINT)
+    {
+        LRESULT result = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+        HDC hdc = GetWindowDC(hWnd);
+        if (hdc)
+        {
+            RECT rc = {};
+            GetWindowRect(hWnd, &rc);
+            OffsetRect(&rc, -rc.left, -rc.top);
+
+            CRECT crc = rc;
+            Canvas canvas(hdc);
+
+            if (GetFocus() == hWnd)
+                canvas.Frame(crc, UI::GetThemeSysColor(UI::ThemeColor_Divider_Highlighter_Pressed));
+            else
+                canvas.Frame(crc, UI::GetThemeSysColor(UI::ThemeColor_Divider_Highlighter_Gradient_End));
+
+            crc.Inflate(-1, -1);
+            canvas.Frame(crc, UI::GetThemeSysColor(UI::ThemeColor_Divider_Color));
+
+            ReleaseDC(hWnd, hdc);
+        }
+        return result;
+    }
+
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
 static HIMAGELIST CreateDarkCheckboxImageList(HWND hTreeView) noexcept(true);
 
 // ---------------------------------------------------------------------------
@@ -253,6 +305,11 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
                     if (hOld) ImageList_Destroy(hOld);
                 }
             }
+        }
+        else if (_wcsicmp(cls, L"Edit") == 0)
+        {
+            SetWindowTheme(child, L"", L"");
+            SetWindowSubclass(child, EditSubclass, 0, 0);
         }
         else if (_wcsicmp(cls, L"ComboBox") == 0)
         {
