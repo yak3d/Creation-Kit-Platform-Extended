@@ -216,7 +216,6 @@ static void ApplyDarkThemeToRichEdit(HWND hWnd) noexcept(true)
 }
 
 static HIMAGELIST CreateDarkCheckboxImageList(HWND hTreeView) noexcept(true);
-static LRESULT CALLBACK WineTreeViewPaintSubclass(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR) noexcept(true);
 
 // ---------------------------------------------------------------------------
 // OnInitDialog — walk child controls and apply Wine-specific overrides
@@ -238,6 +237,10 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
         else if (_wcsicmp(cls, WC_TREEVIEWW) == 0)
         {
             UI::TreeView::Initialize(child);
+            // Initialize sets SetWindowTheme("","") under Wine for text colors, but that
+            // also breaks the +/- expand glyphs (classic renderer uses COLOR_WINDOW → white).
+            // Restore visual styles here; text/selection colors are handled via NM_CUSTOMDRAW.
+            SetWindowTheme(child, nullptr, nullptr);
             auto f = UI::ThemeData::GetSingleton()->ThemeFont;
             PostMessageA(child, WM_SETFONT, reinterpret_cast<WPARAM>(f->Handle), TRUE);
 
@@ -250,8 +253,6 @@ static void OnInitDialog(HWND dlg, [[maybe_unused]] void* userdata) noexcept(tru
                     if (hOld) ImageList_Destroy(hOld);
                 }
             }
-
-            SetWindowSubclass(child, WineTreeViewPaintSubclass, 1, 0);
         }
         else if (_wcsicmp(cls, L"ComboBox") == 0)
         {
@@ -329,79 +330,72 @@ static HIMAGELIST CreateDarkCheckboxImageList(HWND hTreeView) noexcept(true)
 }
 
 // ---------------------------------------------------------------------------
-// WineTreeViewPaintSubclass (id=1) — post-paint pass that repaints selected
-// item labels with the dark theme selection color, since Wine's classic
-// renderer uses GetSysColor(COLOR_HIGHLIGHT) → light blue.
+// TreeView CustomDraw — handle text and selection colors via CDDS_ITEMPOSTPAINT.
+// SetWindowTheme("","") is NOT used (it breaks +/- glyphs under Wine).
+// Visual styles draw the glyphs correctly; we overdraw text+background after.
 // ---------------------------------------------------------------------------
 
-static LRESULT CALLBACK WineTreeViewPaintSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
-    UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
-{
-    if (uMsg == WM_NCDESTROY)
-    {
-        RemoveWindowSubclass(hWnd, WineTreeViewPaintSubclass, uIdSubclass);
-        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-    }
-
-    if (uMsg != WM_PAINT)
-        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-
-    LRESULT result = DefSubclassProc(hWnd, uMsg, wParam, lParam);
-
-    HDC hdc = GetDC(hWnd);
-    if (!hdc) return result;
-
-    HFONT hFont = static_cast<HFONT>(UI::ThemeData::GetSingleton()->ThemeFont->Handle);
-    HGDIOBJ hOldFont = SelectObject(hdc, hFont);
-
-    COLORREF selBk = UI::GetThemeSysColor(UI::ThemeColor_SelectedItem_Back);
-    COLORREF selTx = UI::GetThemeSysColor(UI::ThemeColor_SelectedItem_Text);
-
-    HTREEITEM hItem = TreeView_GetFirstVisible(hWnd);
-    while (hItem)
-    {
-        if (TreeView_GetItemState(hWnd, hItem, TVIS_SELECTED) & TVIS_SELECTED)
-        {
-            RECT rcLabel = {};
-            if (TreeView_GetItemRect(hWnd, hItem, &rcLabel, TRUE))
-            {
-                HBRUSH hbr = CreateSolidBrush(selBk);
-                FillRect(hdc, &rcLabel, hbr);
-                DeleteObject(hbr);
-
-                wchar_t text[512] = {};
-                TVITEMW tvi = {};
-                tvi.mask = TVIF_TEXT;
-                tvi.hItem = hItem;
-                tvi.pszText = text;
-                tvi.cchTextMax = static_cast<int>(ARRAYSIZE(text));
-                SendMessageW(hWnd, TVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&tvi));
-
-                SetBkMode(hdc, TRANSPARENT);
-                SetTextColor(hdc, selTx);
-                DrawTextW(hdc, text, -1, &rcLabel,
-                    DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
-            }
-        }
-        hItem = TreeView_GetNextVisible(hWnd, hItem);
-    }
-
-    SelectObject(hdc, hOldFont);
-    ReleaseDC(hWnd, hdc);
-    return result;
-}
-
-// ---------------------------------------------------------------------------
-// TreeView CustomDraw override — skip NM_CUSTOMDRAW entirely under Wine
-// (colors flow via TreeView_SetTextColor/SetBkColor set in Initialize)
-// ---------------------------------------------------------------------------
-
-static LRESULT OnTreeViewCustomDraw([[maybe_unused]] HWND wnd,
-    [[maybe_unused]] LPNMLVCUSTOMDRAW lpcd,
+static LRESULT OnTreeViewCustomDraw(HWND wnd,
+    LPNMLVCUSTOMDRAW lpcd,
     bool* handled,
     [[maybe_unused]] void* userdata) noexcept(true)
 {
-    *handled = true;
+    switch (lpcd->nmcd.dwDrawStage)
+    {
+    case CDDS_PREPAINT:
+        *handled = true;
+        return CDRF_NOTIFYITEMDRAW;
+
+    case CDDS_ITEMPREPAINT:
+        *handled = true;
+        return CDRF_NOTIFYPOSTPAINT;
+
+    case CDDS_ITEMPOSTPAINT:
+    {
+        *handled = true;
+
+        HTREEITEM hItem = reinterpret_cast<HTREEITEM>(lpcd->nmcd.dwItemSpec);
+        RECT rcLabel = {};
+        *reinterpret_cast<HTREEITEM*>(&rcLabel) = hItem;
+        if (!SendMessage(wnd, TVM_GETITEMRECT, TRUE, reinterpret_cast<LPARAM>(&rcLabel)))
+            return CDRF_DODEFAULT;
+
+        bool selected = (lpcd->nmcd.uItemState & CDIS_SELECTED) != 0;
+        COLORREF bkColor = UI::GetThemeSysColor(selected
+            ? UI::ThemeColor_SelectedItem_Back
+            : UI::ThemeColor_TreeView_Color);
+        COLORREF txColor = UI::GetThemeSysColor(selected
+            ? UI::ThemeColor_SelectedItem_Text
+            : UI::ThemeColor_Text_4);
+
+        HBRUSH hbr = CreateSolidBrush(bkColor);
+        FillRect(lpcd->nmcd.hdc, &rcLabel, hbr);
+        DeleteObject(hbr);
+
+        wchar_t text[512] = {};
+        TVITEMW tvi = {};
+        tvi.mask = TVIF_TEXT;
+        tvi.hItem = hItem;
+        tvi.pszText = text;
+        tvi.cchTextMax = static_cast<int>(ARRAYSIZE(text));
+        SendMessageW(wnd, TVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&tvi));
+
+        HFONT hFont = static_cast<HFONT>(UI::ThemeData::GetSingleton()->ThemeFont->Handle);
+        HGDIOBJ hOldFont = SelectObject(lpcd->nmcd.hdc, hFont);
+        SetBkMode(lpcd->nmcd.hdc, TRANSPARENT);
+        SetTextColor(lpcd->nmcd.hdc, txColor);
+
+        RECT rcText = rcLabel;
+        rcText.left += 2;
+        DrawTextW(lpcd->nmcd.hdc, text, -1, &rcText,
+            DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
+
+        SelectObject(lpcd->nmcd.hdc, hOldFont);
+        return CDRF_DODEFAULT;
+    }
+    }
+
+    *handled = false;
     return CDRF_DODEFAULT;
 }
 
