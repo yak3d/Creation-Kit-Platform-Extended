@@ -23,8 +23,6 @@ DLLS := \
 	CKPE.PluginAPI.dll \
 	winhttp.dll
 
-PLUGIN_DLLS := \
-	WineCompat.dll
 
 PAK_DIALOG   := CreationKitPlatformExtended_SF_Dialogs.pak
 PAK_RESOURCE := CreationKitPlatformExtended_SF_QResources.pak
@@ -63,9 +61,6 @@ check:
 	@for dll in $(DLLS); do \
 		test -f "$(BUILD_DIR)/$$dll" || (echo "ERROR: Missing build artifact: $(BUILD_DIR)/$$dll"; exit 1); \
 	done
-	@for dll in $(PLUGIN_DLLS); do \
-		test -f "$(BUILD_DIR)/$$dll" || (echo "ERROR: Missing plugin artifact: $(BUILD_DIR)/$$dll"; exit 1); \
-	done
 	@test -f "$(DIALOGS_SF)/$(PAK_DIALOG)"   || (echo "ERROR: Missing $(PAK_DIALOG)"; exit 1)
 	@test -f "$(STUFFS_SF)/$(PAK_RESOURCE)"  || (echo "ERROR: Missing $(PAK_RESOURCE)"; exit 1)
 	@test -f "$(DATABASE_SF)/$(PAK_DATABASE)" || (echo "ERROR: Missing $(PAK_DATABASE)"; exit 1)
@@ -74,7 +69,7 @@ check:
 $(PLUGIN_DIR):
 	mkdir -p $@
 
-install: check $(DLL_TARGETS) $(PLUGIN_DIR) $(PLUGIN_TARGETS) $(PAK_TARGETS)
+install: check $(DLL_TARGETS) $(PAK_TARGETS)
 	@if [ ! -f "$(TOML_DST)" ]; then \
 		cp "$(TOML_SRC)" "$(TOML_DST)"; \
 		echo "Copied TOML: $(TOML_DST)"; \
@@ -110,9 +105,6 @@ uninstall:
 	@echo "Removing CKPE Starfield symlinks from $(SF_DIR)..."
 	@for dll in $(DLLS); do \
 		rm -f "$(SF_DIR)/$$dll" && echo "Removed: $(SF_DIR)/$$dll" || true; \
-	done
-	@for dll in $(PLUGIN_DLLS); do \
-		rm -f "$(PLUGIN_DIR)/$$dll" && echo "Removed: $(PLUGIN_DIR)/$$dll" || true; \
 	done
 	@rm -f "$(SF_DIR)/$(PAK_DIALOG)"   && echo "Removed: $(SF_DIR)/$(PAK_DIALOG)"   || true
 	@rm -f "$(SF_DIR)/$(PAK_RESOURCE)" && echo "Removed: $(SF_DIR)/$(PAK_RESOURCE)" || true
