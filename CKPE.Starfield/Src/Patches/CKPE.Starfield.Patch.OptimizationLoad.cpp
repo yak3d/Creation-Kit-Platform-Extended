@@ -21,11 +21,14 @@ namespace CKPE
 		{
 			namespace INI
 			{
+				static std::string app_path;
+				static std::wstring app_pathw;
+
 				static UINT _hook_GetPrivateProfileIntA(LPCSTR lpAppName, LPCSTR lpKeyName, INT nDefault, LPCSTR lpFileName) noexcept
 				{
 					if (PathUtils::IsRelative(lpFileName))
 						return GetPrivateProfileIntA(lpAppName, lpKeyName, nDefault,
-							(StringUtils::Utf16ToWinCP(PathUtils::GetApplicationPath()) + PathUtils::ExtractFileName(lpFileName)).c_str());
+							(app_path + PathUtils::ExtractFileName(lpFileName)).c_str());
 					else
 						return GetPrivateProfileIntA(lpAppName, lpKeyName, nDefault, lpFileName);
 				}
@@ -34,7 +37,7 @@ namespace CKPE
 				{
 					if (PathUtils::IsRelative(lpFileName))
 						return GetPrivateProfileIntW(lpAppName, lpKeyName, nDefault,
-							(PathUtils::GetApplicationPath() + PathUtils::ExtractFileName(lpFileName)).c_str());
+							(app_pathw + PathUtils::ExtractFileName(lpFileName)).c_str());
 					else
 						return GetPrivateProfileIntW(lpAppName, lpKeyName, nDefault, lpFileName);
 				}
@@ -44,7 +47,7 @@ namespace CKPE
 				{
 					if (PathUtils::IsRelative(lpFileName))
 						return GetPrivateProfileStringA(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize,
-							(StringUtils::Utf16ToWinCP(PathUtils::GetApplicationPath()) + PathUtils::ExtractFileName(lpFileName)).c_str());
+							(app_path + PathUtils::ExtractFileName(lpFileName)).c_str());
 					else
 						return GetPrivateProfileStringA(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
 				}
@@ -54,7 +57,7 @@ namespace CKPE
 				{
 					if (PathUtils::IsRelative(lpFileName))
 						return GetPrivateProfileStringW(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize,
-							(PathUtils::GetApplicationPath() + PathUtils::ExtractFileName(lpFileName)).c_str());
+							(app_pathw + PathUtils::ExtractFileName(lpFileName)).c_str());
 					else
 						return GetPrivateProfileStringW(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
 				}
@@ -64,7 +67,7 @@ namespace CKPE
 				{
 					if (PathUtils::IsRelative(lpFileName))
 						return GetPrivateProfileStructA(lpszSection, lpszKey, lpStruct, uSizeStruct,
-							(StringUtils::Utf16ToWinCP(PathUtils::GetApplicationPath()) + PathUtils::ExtractFileName(lpFileName)).c_str());
+							(app_path + PathUtils::ExtractFileName(lpFileName)).c_str());
 					else
 						return GetPrivateProfileStructA(lpszSection, lpszKey, lpStruct, uSizeStruct, lpFileName);
 				}
@@ -149,6 +152,9 @@ namespace CKPE
 
 					if (VersionLists::GetEditorVersion() == VersionLists::EDITOR_STARFIELD_1_16_236_0)
 					{
+						INI::app_pathw = PathUtils::GetApplicationPath();
+						INI::app_path = StringUtils::Utf16ToWinCP(INI::app_pathw);
+
 						// Fixed bugs this version CK, relative path for this functions - errors
 						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileIntA", (uintptr_t)&INI::_hook_GetPrivateProfileIntA);
 						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileIntW", (uintptr_t)&INI::_hook_GetPrivateProfileIntW);
