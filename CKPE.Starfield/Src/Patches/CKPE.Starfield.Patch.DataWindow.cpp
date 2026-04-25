@@ -1,4 +1,4 @@
-﻿// Copyright © 2023-2025 aka perchik71. All rights reserved.
+// Copyright © 2023-2025 aka perchik71. All rights reserved.
 // Contacts: <email:timencevaleksej@gmail.com>
 // License: https://www.gnu.org/licenses/lgpl-3.0.html
 
@@ -95,13 +95,7 @@ namespace CKPE
 					// Subscribe to notifications when the user types in the filter text box
 					SendMessageA(GetDlgItem(Hwnd, UI_DATA_DIALOG_FILTERBOX), EM_SETEVENTMASK, 0, ENM_CHANGE);
 
-					// Prevent flickering & adjust width to fit file names.
-					// Under Wine, remove any LVS_EX_DOUBLEBUFFER set by the game's WM_INITDIALOG — it
-					// breaks LVN_GETDISPINFO text callbacks so item text is never delivered to the control.
-					if (CKPE_UserUseWine())
-						ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, 0);
-					else
-						ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+					ListView_SetExtendedListViewStyleEx(pluginListHandle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
 					ListView_SetColumnWidth(pluginListHandle, 0, 250);
 
 					// Create two separate list view groups: one for default items and one for hidden (filtered) items. This has to be run

@@ -1,4 +1,4 @@
-﻿// Copyright © 2023-2025 aka perchik71. All rights reserved.
+// Copyright © 2023-2025 aka perchik71. All rights reserved.
 // Contacts: <email:timencevaleksej@gmail.com>
 // License: https://www.gnu.org/licenses/lgpl-3.0.html
 
@@ -120,9 +120,7 @@ namespace CKPE
 				auto iRes = Common::EditorUI::Hook::HKSendMessageA(TVHwnd, Message, wParam, lParam);
 
 				SetWindowLongPtrA(TVHwnd, GWL_STYLE, GetWindowLongPtrA(TVHwnd, GWL_STYLE) | WS_BORDER);
-				// TVS_EX_DOUBLEBUFFER breaks LVN_GETDISPINFO text callbacks under Wine.
-				if (!CKPE_UserUseWine())
-					TreeView_SetExtendedStyle(TVHwnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
+				TreeView_SetExtendedStyle(TVHwnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
 
 				return iRes;
 			}

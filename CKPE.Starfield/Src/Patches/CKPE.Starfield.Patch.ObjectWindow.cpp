@@ -1,4 +1,4 @@
-﻿// Copyright © 2023-2025 aka perchik71. All rights reserved.
+// Copyright © 2023-2025 aka perchik71. All rights reserved.
 // Contacts: <email:timencevaleksej@gmail.com>
 // License: https://www.gnu.org/licenses/lgpl-3.0.html
 
@@ -214,24 +214,8 @@ namespace CKPE
 					lpObjWnd->Controls.Spliter = lpObjWnd->ObjectWindow.GetControl(2157);
 					lpObjWnd->Controls.ActiveOnly = GetDlgItem(Hwnd, 5904);
 
-					// Eliminate the flicker when changing categories/size trees.
-					// LVS/TVS_EX_DOUBLEBUFFER breaks LVN_GETDISPINFO text callbacks under Wine.
-					if (!CKPE_UserUseWine())
-					{
-						auto StyleEx = ListView_GetExtendedListViewStyle(lpObjWnd->Controls.ItemList.Handle);
-						if ((StyleEx & LVS_EX_DOUBLEBUFFER) != LVS_EX_DOUBLEBUFFER)
-						{
-							StyleEx |= LVS_EX_DOUBLEBUFFER;
-							ListView_SetExtendedListViewStyleEx(lpObjWnd->Controls.ItemList.Handle, StyleEx, StyleEx);
-						}
-
-						StyleEx = TreeView_GetExtendedStyle(lpObjWnd->Controls.TreeList.Handle);
-						if ((StyleEx & TVS_EX_DOUBLEBUFFER) != TVS_EX_DOUBLEBUFFER)
-						{
-							StyleEx |= TVS_EX_DOUBLEBUFFER;
-							TreeView_SetExtendedStyle(lpObjWnd->Controls.TreeList.Handle, StyleEx, StyleEx);
-						}
-					}
+					ListView_SetExtendedListViewStyleEx(lpObjWnd->Controls.ItemList.Handle, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
+					TreeView_SetExtendedStyle(lpObjWnd->Controls.TreeList.Handle, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
 		
 					ObjectWindows.emplace(Hwnd, lpObjWnd);
 				}

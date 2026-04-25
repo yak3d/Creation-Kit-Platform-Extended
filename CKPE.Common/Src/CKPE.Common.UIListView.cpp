@@ -1,4 +1,4 @@
-﻿// Copyright © 2025 aka perchik71. All rights reserved.
+// Copyright © 2025 aka perchik71. All rights reserved.
 // Contacts: <email:timencevaleksej@gmail.com>
 // License: https://www.gnu.org/licenses/lgpl-3.0.html
 
@@ -34,31 +34,12 @@ namespace CKPE
 					ListView_SetTextBkColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_ListView_Color));
 					ListView_SetBkColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_ListView_Color));
 
-					// Under Wine, visual styles cause comctl32 to use DrawThemeText which
-					// ignores NM_CUSTOMDRAW colors. Opting out of theming forces the classic
-					// GDI rendering path where ListView_SetTextColor/SetBkColor are respected.
-					if (CKPE_UserUseWine())
-						SetWindowTheme(hWindow, L"", L"");
-
 					return OpenThemeData(hWindow, VSCLASS_SCROLLBAR);
 				}
 
 				CKPE_COMMON_API LRESULT CALLBACK ListViewSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
 					[[maybe_unused]] UINT_PTR uIdSubclass, [[maybe_unused]] DWORD_PTR dwRefData) noexcept(true)
 				{
-					// Under Wine, LVS_EX_DOUBLEBUFFER causes the offscreen DC to reinitialize
-					// with black text and white background, defeating all color overrides and
-					// breaking LVN_GETDISPINFO text delivery. Strip it from any style change.
-					if (uMsg == LVM_SETEXTENDEDLISTVIEWSTYLE && CKPE_UserUseWine())
-					{
-						bool hadDoubleBuf = (wParam & LVS_EX_DOUBLEBUFFER) != 0;
-						wParam &= ~static_cast<WPARAM>(LVS_EX_DOUBLEBUFFER);
-						lParam &= ~static_cast<LPARAM>(LVS_EX_DOUBLEBUFFER);
-						if (hadDoubleBuf)
-							_CONSOLE("[Wine][ListView] stripped LVS_EX_DOUBLEBUFFER hwnd=%p", (void*)hWnd);
-						return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-					}
-
 					if ((uMsg == WM_SETFOCUS) || (uMsg == WM_KILLFOCUS))
 					{
 						InvalidateRect(hWnd, nullptr, TRUE);
