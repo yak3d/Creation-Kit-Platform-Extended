@@ -5,8 +5,6 @@
 #include <CKPE.Common.UIBaseWindow.h>
 #include <CKPE.Common.UIVarCommon.h>
 #include <CKPE.Common.UITreeView.h>
-#include <CKPE.Common.Interface.h>
-#include <CKPE.Utils.h>
 #include <vssym32.h>
 
 namespace CKPE
@@ -28,23 +26,11 @@ namespace CKPE
 					TreeView_SetTextColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_Text_4));
 					TreeView_SetBkColor(hWindow, GetThemeSysColor(ThemeColor::ThemeColor_TreeView_Color));
 
-					// Under Wine, visual styles cause comctl32 to use DrawThemeText which
-					// ignores NM_CUSTOMDRAW colors. Opting out of theming forces the classic
-					// GDI rendering path where TreeView_SetTextColor/SetBkColor are respected.
-					if (CKPE_UserUseWine())
-						SetWindowTheme(hWindow, L"", L"");
-
-					// TVS_EX_DOUBLEBUFFER eliminates flicker on resize, but under Wine the
-					// offscreen DC is re-initialized with default (black) text color after
-					// each NM_CUSTOMDRAW notification, defeating our color overrides.
-					if (!CKPE_UserUseWine())
+					auto StyleEx = TreeView_GetExtendedStyle(hWindow);
+					if ((StyleEx & TVS_EX_DOUBLEBUFFER) != TVS_EX_DOUBLEBUFFER)
 					{
-						auto StyleEx = TreeView_GetExtendedStyle(hWindow);
-						if ((StyleEx & TVS_EX_DOUBLEBUFFER) != TVS_EX_DOUBLEBUFFER)
-						{
-							StyleEx |= TVS_EX_DOUBLEBUFFER;
-							TreeView_SetExtendedStyle(hWindow, StyleEx, StyleEx);
-						}
+						StyleEx |= TVS_EX_DOUBLEBUFFER;
+						TreeView_SetExtendedStyle(hWindow, StyleEx, StyleEx);
 					}
 
 					return OpenThemeData(hWindow, VSCLASS_SCROLLBAR);
@@ -53,19 +39,6 @@ namespace CKPE
 				CKPE_COMMON_API LRESULT CALLBACK TreeViewSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
 					UINT_PTR uIdSubclass, DWORD_PTR dwRefData) noexcept(true)
 				{
-					// Under Wine, TVS_EX_DOUBLEBUFFER causes the offscreen DC to reinitialize
-					// with black text and white background, defeating all color overrides and
-					// breaking TVN_GETDISPINFO text delivery. Strip it from any style change.
-					if (uMsg == TVM_SETEXTENDEDSTYLE && CKPE_UserUseWine())
-					{
-						bool hadDoubleBuf = (wParam & TVS_EX_DOUBLEBUFFER) != 0;
-						wParam &= ~static_cast<WPARAM>(TVS_EX_DOUBLEBUFFER);
-						lParam &= ~static_cast<LPARAM>(TVS_EX_DOUBLEBUFFER);
-						if (hadDoubleBuf)
-							_CONSOLE("[Wine][TreeView] stripped TVS_EX_DOUBLEBUFFER hwnd=%p", (void*)hWnd);
-						return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-					}
-
 					if ((uMsg == WM_SETFOCUS) || (uMsg == WM_KILLFOCUS))
 					{
 						InvalidateRect(hWnd, NULL, TRUE);
@@ -126,11 +99,6 @@ namespace CKPE
 						auto Result = sCustomDrawHandler(hWindow, lpTreeView, NeedReturned);
 						if (NeedReturned) return Result;
 					}
-
-					// Under Wine, NM_CUSTOMDRAW interferes with native rendering.
-					// Colors are set via TreeView_SetTextColor/SetBkColor in Initialize.
-					if (CKPE_UserUseWine())
-						return CDRF_DODEFAULT;
 
 					switch (lpTreeView->nmcd.dwDrawStage)
 					{
