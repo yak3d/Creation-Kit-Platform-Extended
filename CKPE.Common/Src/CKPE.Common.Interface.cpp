@@ -357,7 +357,7 @@ namespace CKPE
 				KillerGuardMalware killer;
 				killer.Kill();
 #endif
-
+				
 				// IMPORTANT HOOKS
 				EditorUI::Hook::Initialize();	// Init UI patch (Dialogs)
 				SafeExit::Hook::Initialize();	// Init fast quit
@@ -371,7 +371,7 @@ namespace CKPE
 					else if (_READ_OPTION_BOOL("CreationKit", "bUIDarkTheme", false))
 						ModernTheme::Hook::Initialize();
 				}
-
+				
 				// LOG WINDOW
 				/* call constructor */ new LogWindow();		
 			}

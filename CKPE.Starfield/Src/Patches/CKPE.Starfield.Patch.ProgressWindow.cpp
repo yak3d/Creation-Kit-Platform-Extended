@@ -77,7 +77,7 @@ namespace CKPE
 				auto base = _interface->GetApplication()->GetBase();
 
 				auto rva = (std::uintptr_t)(__CKPE_OFFSET(0));
-				SafeWrite::WriteNop(rva, 2);
+				//SafeWrite::WriteNop(rva, 2);
 				Detours::DetourCall(rva + 0x27, (std::uintptr_t)&sub1);
 
 				// Hook Loading Files...Initializing...
@@ -177,11 +177,11 @@ namespace CKPE
 				if (ProgressTaskBarPtr) ProgressTaskBarPtr->Step();
 			}
 
-			HWND ProgressWindow::sub1(HINSTANCE hInstance, LPCSTR lpTemplateName, HWND hWndParent,
-				DLGPROC lpDialogFunc, LPARAM dwInitParam) noexcept(true)
+			HWND ProgressWindow::sub1(HINSTANCE hInstance, [[maybe_unused]] LPCSTR lpTemplateName, HWND hWndParent,
+				[[maybe_unused]] DLGPROC lpDialogFunc, LPARAM dwInitParam) noexcept(true)
 			{
 				return (HWND)Common::EditorUI::Hook::HKCreateDialogParamA(hInstance, MAKEINTRESOURCE(3238), hWndParent,
-					(std::uintptr_t)HKWndProc, dwInitParam);
+					(std::uintptr_t)&HKWndProc, dwInitParam);
 			}
 
 			void ProgressWindow::sub2(uint32_t nPartId, LPCSTR lpcstrText) noexcept(true)

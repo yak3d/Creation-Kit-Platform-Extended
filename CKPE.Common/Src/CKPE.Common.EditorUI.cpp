@@ -410,7 +410,7 @@ namespace CKPE
 			ThreadDialogData.DialogFunc = (DLGPROC)lpDialogFunc;
 			ThreadDialogData.IsDialog = false;
 
-			//_MESSAGE("DBG dialog: %X(%u) %p", (DWORD)lpTemplateName, (DWORD)lpTemplateName, lpDialogFunc);
+			_MESSAGE("DBG dialog: %X(%u) %p", (DWORD)lpTemplateName, (DWORD)lpTemplateName, lpDialogFunc);
 
 			// Override certain default dialogs to use this DLL's resources
 			switch (reinterpret_cast<uintptr_t>(lpTemplateName))
@@ -450,7 +450,7 @@ namespace CKPE
 			ThreadDialogData.DialogFunc = (DLGPROC)lpDialogFunc;
 			ThreadDialogData.IsDialog = true;
 
-			//_MESSAGE("DBG dialog modal: %X(%u) %p", (DWORD)lpTemplateName, (DWORD)lpTemplateName, lpDialogFunc);
+			_MESSAGE("DBG dialog modal: %X(%u) %p", (DWORD)lpTemplateName, (DWORD)lpTemplateName, lpDialogFunc);
 
 			// Override certain default dialogs to use this DLL's resources
 			switch (reinterpret_cast<uintptr_t>(lpTemplateName))

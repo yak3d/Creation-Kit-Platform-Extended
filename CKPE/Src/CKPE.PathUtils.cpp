@@ -200,10 +200,7 @@ namespace CKPE
 
 	std::string PathUtils::ExtractFileName(const std::string& path) noexcept(true)
 	{
-		auto it = path.find_last_of("\\/");
-		if (it != std::string::npos)
-			return path.substr(it + 1);
-		return path;
+		return PathFindFileNameA(path.c_str());
 	}
 
 	std::string PathUtils::ExtractFilePath(const std::string& path) noexcept(true)
@@ -224,10 +221,7 @@ namespace CKPE
 
 	std::wstring PathUtils::ExtractFileName(const std::wstring& path) noexcept(true)
 	{
-		auto it = path.find_last_of(L"\\/");
-		if (it != std::wstring::npos)
-			return path.substr(it + 1);
-		return path;
+		return PathFindFileNameW(path.c_str());
 	}
 	
 	std::wstring PathUtils::ExtractFilePath(const std::wstring& path) noexcept(true)

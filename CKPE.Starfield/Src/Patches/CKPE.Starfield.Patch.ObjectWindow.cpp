@@ -52,7 +52,7 @@ namespace CKPE
 				lpObjWnd->Controls.BtnObjLayout.Left = w_left;
 				lpObjWnd->Controls.ToggleDecompose.Left = w_left;
 				lpObjWnd->Controls.BtnDataView.Left = w_left;
-				lpObjWnd->Controls.ActiveOnly.Width = w_tree;
+				lpObjWnd->Controls.ActiveOnly.Width = w_tree - 5;
 
 				w_left = w_tree - lpObjWnd->Controls.EditFilter.Left - w_btns - 3;
 				lpObjWnd->Controls.EditFilter.Width = w_left;
@@ -102,7 +102,7 @@ namespace CKPE
 				lpObjWnd->Controls.BtnObjLayout.Left = w_left;
 				lpObjWnd->Controls.BtnDataView.Left = w_left;
 				lpObjWnd->Controls.ToggleDecompose.Left = w_left;
-				lpObjWnd->Controls.ActiveOnly.Width = w_tree;
+				lpObjWnd->Controls.ActiveOnly.Width = w_tree - 5;
 
 				w_left = w_tree - lpObjWnd->Controls.EditFilter.Left - w_btns - 3;
 				lpObjWnd->Controls.EditFilter.Width = w_left;
@@ -200,7 +200,7 @@ namespace CKPE
 			{
 				if (Message == WM_INITDIALOG)
 				{
-					LPOBJWND lpObjWnd = new OBJWND;
+					auto lpObjWnd = new OBJWND;
 					lpObjWnd->ObjectWindow = Hwnd;
 
 					lpObjWnd->Controls.TreeList = lpObjWnd->ObjectWindow.GetControl(2093);
@@ -236,7 +236,7 @@ namespace CKPE
 				// Don't let us reduce the window too much
 				else if (Message == WM_GETMINMAXINFO)
 				{
-					LPMINMAXINFO lpMMI = (LPMINMAXINFO)lParam;
+					auto lpMMI = (LPMINMAXINFO)lParam;
 					lpMMI->ptMinTrackSize.x = 350;
 					lpMMI->ptMinTrackSize.y = 200;
 
@@ -249,7 +249,7 @@ namespace CKPE
 						LPOBJWND lpObjWnd = (*iterator).second;
 						if (lpObjWnd)
 						{
-							HDC dc = (HDC)wParam;
+							auto dc = (HDC)wParam;
 							auto Rect = lpObjWnd->Controls.ItemList.BoundsRect;
 							ExcludeClipRect(dc, Rect.Left, Rect.Top, Rect.Right, Rect.Bottom);
 							Rect = lpObjWnd->Controls.TreeList.BoundsRect;

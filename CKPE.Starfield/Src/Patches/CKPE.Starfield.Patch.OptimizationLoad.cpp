@@ -3,6 +3,8 @@
 // License: https://www.gnu.org/licenses/lgpl-3.0.html
 
 #include <windows.h>
+#include <CKPE.PathUtils.h>
+#include <CKPE.StringUtils.h>
 #include <CKPE.Detours.h>
 #include <CKPE.SafeWrite.h>
 #include <CKPE.Application.h>
@@ -17,6 +19,57 @@ namespace CKPE
 	{
 		namespace Patch
 		{
+			namespace INI
+			{
+				static UINT _hook_GetPrivateProfileIntA(LPCSTR lpAppName, LPCSTR lpKeyName, INT nDefault, LPCSTR lpFileName) noexcept
+				{
+					if (PathUtils::IsRelative(lpFileName))
+						return GetPrivateProfileIntA(lpAppName, lpKeyName, nDefault,
+							(StringUtils::Utf16ToWinCP(PathUtils::GetApplicationPath()) + PathUtils::ExtractFileName(lpFileName)).c_str());
+					else
+						return GetPrivateProfileIntA(lpAppName, lpKeyName, nDefault, lpFileName);
+				}
+
+				static UINT _hook_GetPrivateProfileIntW(LPCWSTR lpAppName, LPCWSTR lpKeyName, INT nDefault, LPCWSTR lpFileName) noexcept
+				{
+					if (PathUtils::IsRelative(lpFileName))
+						return GetPrivateProfileIntW(lpAppName, lpKeyName, nDefault,
+							(PathUtils::GetApplicationPath() + PathUtils::ExtractFileName(lpFileName)).c_str());
+					else
+						return GetPrivateProfileIntW(lpAppName, lpKeyName, nDefault, lpFileName);
+				}
+
+				static DWORD _hook_GetPrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKeyName, LPCSTR lpDefault, 
+					LPSTR lpReturnedString, DWORD nSize, LPCSTR lpFileName) noexcept
+				{
+					if (PathUtils::IsRelative(lpFileName))
+						return GetPrivateProfileStringA(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize,
+							(StringUtils::Utf16ToWinCP(PathUtils::GetApplicationPath()) + PathUtils::ExtractFileName(lpFileName)).c_str());
+					else
+						return GetPrivateProfileStringA(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
+				}
+
+				static DWORD _hook_GetPrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lpKeyName, LPCWSTR lpDefault,
+					LPWSTR lpReturnedString, DWORD nSize, LPCWSTR lpFileName) noexcept
+				{
+					if (PathUtils::IsRelative(lpFileName))
+						return GetPrivateProfileStringW(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize,
+							(PathUtils::GetApplicationPath() + PathUtils::ExtractFileName(lpFileName)).c_str());
+					else
+						return GetPrivateProfileStringW(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
+				}
+
+				static DWORD _hook_GetPrivateProfileStructA(LPCSTR lpszSection, LPCSTR lpszKey, LPVOID lpStruct,
+					UINT uSizeStruct, LPCSTR lpFileName) noexcept
+				{
+					if (PathUtils::IsRelative(lpFileName))
+						return GetPrivateProfileStructA(lpszSection, lpszKey, lpStruct, uSizeStruct,
+							(StringUtils::Utf16ToWinCP(PathUtils::GetApplicationPath()) + PathUtils::ExtractFileName(lpFileName)).c_str());
+					else
+						return GetPrivateProfileStructA(lpszSection, lpszKey, lpStruct, uSizeStruct, lpFileName);
+				}
+			}
+
 			static HANDLE HKFindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData) noexcept(true)
 			{
 				return FindFirstFileExA(lpFileName, FindExInfoStandard, lpFindFileData, FindExSearchNameMatch,
@@ -70,7 +123,7 @@ namespace CKPE
 				// - Increasing the read memory buffer to reduce disk access
 				// - Reducing spin time. Important: materials are loaded in the background.
 
-				Detours::DetourIAT(base, "kernel32.dll", "FindFirstFileA", (std::uintptr_t)HKFindFirstFileA);
+				Detours::DetourIAT(base, "kernel32.dll", "FindFirstFileA", (std::uintptr_t)&HKFindFirstFileA);
 
 				{
 					// Cutting a lot is faster this way
@@ -93,6 +146,16 @@ namespace CKPE
 					text.Write(rva + 8, { 0x86 });
 					// full skip "%s: Imported file missing: %s"
 					text.Write(__CKPE_OFFSET(10), { 0xEB });
+
+					if (VersionLists::GetEditorVersion() == VersionLists::EDITOR_STARFIELD_1_16_236_0)
+					{
+						// Fixed bugs this version CK, relative path for this functions - errors
+						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileIntA", (uintptr_t)&INI::_hook_GetPrivateProfileIntA);
+						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileIntW", (uintptr_t)&INI::_hook_GetPrivateProfileIntW);
+						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileStringA", (uintptr_t)&INI::_hook_GetPrivateProfileStringA);
+						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileStringW", (uintptr_t)&INI::_hook_GetPrivateProfileStringW);
+						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileStructA", (uintptr_t)&INI::_hook_GetPrivateProfileStructA);
+					}
 				}
 
 				// Reducing spin time.
