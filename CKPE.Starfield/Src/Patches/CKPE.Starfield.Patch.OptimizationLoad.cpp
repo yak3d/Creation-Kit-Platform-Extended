@@ -71,12 +71,39 @@ namespace CKPE
 					else
 						return GetPrivateProfileStructA(lpszSection, lpszKey, lpStruct, uSizeStruct, lpFileName);
 				}
+
+				static BOOL _hook_WritePrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKeyName, LPCSTR lpString, LPCSTR lpFileName) noexcept
+				{
+					if (PathUtils::IsRelative(lpFileName))
+						return WritePrivateProfileStringA(lpAppName, lpKeyName, lpString,
+							(app_path + PathUtils::ExtractFileName(lpFileName)).c_str());
+					else
+						return WritePrivateProfileStringA(lpAppName, lpKeyName, lpString, lpFileName);
+				}
+
+				static BOOL _hook_WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lpKeyName, LPCWSTR lpString, LPCWSTR lpFileName) noexcept
+				{
+					if (PathUtils::IsRelative(lpFileName))
+						return WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, (app_pathw + PathUtils::ExtractFileName(lpFileName)).c_str());
+					else
+						return WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, lpFileName);
+				}
+
+				static BOOL _hook_WritePrivateProfileStructA(LPCSTR lpszSection, LPCSTR lpszKey, LPVOID lpStruct,
+					UINT uSizeStruct, LPCSTR lpFileName) noexcept
+				{
+					if (PathUtils::IsRelative(lpFileName))
+						return WritePrivateProfileStructA(lpszSection, lpszKey, lpStruct, uSizeStruct,
+							(app_path + PathUtils::ExtractFileName(lpFileName)).c_str());
+					else
+						return WritePrivateProfileStructA(lpszSection, lpszKey, lpStruct, uSizeStruct, lpFileName);
+				}
 			}
 
 			static HANDLE HKFindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData) noexcept(true)
 			{
 				return FindFirstFileExA(lpFileName, FindExInfoStandard, lpFindFileData, FindExSearchNameMatch,
-					NULL, FIND_FIRST_EX_LARGE_FETCH);
+					nullptr, FIND_FIRST_EX_LARGE_FETCH);
 			}
 
 			OptimizationLoad::OptimizationLoad() : Common::Patch()
@@ -125,6 +152,7 @@ namespace CKPE
 				// - Eliminate millions of calls to update the statusbar
 				// - Increasing the read memory buffer to reduce disk access
 				// - Reducing spin time. Important: materials are loaded in the background.
+				// - (1_16_236_0) Fixed bugs this version CK, relative path for this functions - errors.
 
 				Detours::DetourIAT(base, "kernel32.dll", "FindFirstFileA", (std::uintptr_t)&HKFindFirstFileA);
 
@@ -161,6 +189,9 @@ namespace CKPE
 						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileStringA", (uintptr_t)&INI::_hook_GetPrivateProfileStringA);
 						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileStringW", (uintptr_t)&INI::_hook_GetPrivateProfileStringW);
 						Detours::DetourIAT(base, "kernel32.dll", "GetPrivateProfileStructA", (uintptr_t)&INI::_hook_GetPrivateProfileStructA);
+						Detours::DetourIAT(base, "kernel32.dll", "WritePrivateProfileStringA", (uintptr_t)&INI::_hook_WritePrivateProfileStringA);
+						Detours::DetourIAT(base, "kernel32.dll", "WritePrivateProfileStringW", (uintptr_t)&INI::_hook_WritePrivateProfileStringW);
+						Detours::DetourIAT(base, "kernel32.dll", "WritePrivateProfileStructA", (uintptr_t)&INI::_hook_WritePrivateProfileStructA);
 					}
 				}
 
