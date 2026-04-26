@@ -45,6 +45,11 @@ namespace CKPE
 				}
 			};
 
+			static void* NiBSScrapAdapter_AllocateFromBSScrap(std::uint32_t size)
+			{
+				return Common::MemoryManager::GetSingleton()->MemAlloc(size, 8, true);
+			}
+
 			class BSScrapHeap
 			{
 				// Не описываем конструкторы и деструкторы
@@ -234,6 +239,11 @@ namespace CKPE
 				Detours::DetourJump(__CKPE_OFFSET(3), (std::uintptr_t)&BSScrapHeap::Allocate);
 				Detours::DetourJump(__CKPE_OFFSET(4), (std::uintptr_t)&BSScrapHeap::Deallocate);
 				Detours::DetourJump(__CKPE_OFFSET(5), (std::uintptr_t)&bhkThreadMemorySource::__ctor__);
+
+				// Only support for 1.11.137.0 - resolves null memory access when dealing with SCOLs.
+				if (VersionLists::GetEditorVersion() == VersionLists::EDITOR_FALLOUT_C4_LAST) {
+					Detours::DetourJump(__CKPE_OFFSET(10), (std::uintptr_t)&NiBSScrapAdapter_AllocateFromBSScrap);
+				}
 				
 				SafeWrite::Write(__CKPE_OFFSET(6), { 0xC3 });
 				SafeWrite::Write(__CKPE_OFFSET(7), { 0xC3 });
