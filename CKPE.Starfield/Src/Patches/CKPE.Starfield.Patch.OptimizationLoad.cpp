@@ -197,11 +197,11 @@ namespace CKPE
 
 				// Reducing spin time.
 				// While need to wait, will occupy thread with something useful, for example, message processing
-				Detours::DetourCall(__CKPE_OFFSET(9), (std::uintptr_t)&ProcessMessage);
-				Detours::DetourCall(__CKPE_OFFSET(11), (std::uintptr_t)&ProcessMessage);
-				//Detours::DetourCall(_RELDATA_RAV(12), (std::uintptr_t)&ProcessMessage);
-				//Detours::DetourCall(_RELDATA_RAV(13), (std::uintptr_t)&ProcessMessage);
-				//Detours::DetourCall(_RELDATA_RAV(14), (std::uintptr_t)&ProcessMessage);
+				//Detours::DetourCall(__CKPE_OFFSET(9), (std::uintptr_t)&ProcessMessage);
+				//Detours::DetourCall(__CKPE_OFFSET(11), (std::uintptr_t)&ProcessMessage);
+				//Detours::DetourCall(__CKPE_OFFSET(12), (std::uintptr_t)&ProcessMessage);
+				//Detours::DetourCall(__CKPE_OFFSET(13), (std::uintptr_t)&ProcessMessage);
+				//Detours::DetourCall(__CKPE_OFFSET(14), (std::uintptr_t)&ProcessMessage);
 
 				// 2 kb -> x kb >= 256 kb
 				*(std::uintptr_t*)&EditorAPI::BSFile::ICreateInstance =
@@ -212,6 +212,7 @@ namespace CKPE
 
 			void OptimizationLoad::ProcessMessage() noexcept(true)
 			{
+				Sleep(0);
 				Common::Interface::GetSingleton()->GetApplication()->MessageProcessing();
 			}
 		}

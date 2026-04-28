@@ -127,12 +127,16 @@ namespace CKPE
 							//ProgressTaskBarPtr->SetMarquee(true);
 						}
 
+						SetTimer(Hwnd, 2, 50, NULL);
+
 						ShowWindow(Hwnd, SW_SHOW);
 						UpdateWindow(Hwnd);
 					}
 					return 0;
 					case WM_DESTROY:
 					{
+						KillTimer(Hwnd, 2);
+
 						if (ProgressTaskBarPtr)
 						{
 							delete ProgressTaskBarPtr;
@@ -145,6 +149,14 @@ namespace CKPE
 						s->m_hWnd = nullptr;
 						s->ProgressLabel = nullptr;
 						s->Progress = nullptr;
+					}
+					return 0;
+					case WM_TIMER:
+					{
+						if (wParam == 2)
+						{
+							Common::Interface::GetSingleton()->GetApplication()->MessageProcessing();
+						}
 					}
 					return 0;
 				}
@@ -175,6 +187,8 @@ namespace CKPE
 
 				s->Progress.Perform(PBM_STEPIT, 0, 0);
 				if (ProgressTaskBarPtr) ProgressTaskBarPtr->Step();
+
+				Common::Interface::GetSingleton()->GetApplication()->MessageProcessing();
 			}
 
 			HWND ProgressWindow::sub1(HINSTANCE hInstance, [[maybe_unused]] LPCSTR lpTemplateName, HWND hWndParent,
@@ -195,6 +209,8 @@ namespace CKPE
 					s->Progress.Perform(PBM_SETMARQUEE, (WPARAM)1, (LPARAM)100);
 
 					if (ProgressTaskBarPtr) ProgressTaskBarPtr->SetMarquee(true);
+
+					Common::Interface::GetSingleton()->GetApplication()->MessageProcessing();
 				}
 
 				return fast_call<void>(pointer_ProgressWindow_sub, nPartId, lpcstrText);
