@@ -1,6 +1,13 @@
 // Author: Nukem9
 // https://github.com/Nukem9/SkyrimSETest/blob/master/skyrim64_test/src/typeinfo/ms_rtti.cpp
 
+#if defined(__clang__)
+// MSVC pre-injects the type '_ThrowInfo' into the compiler; <rttidata.h> ->
+// <ehdata_forceinclude.h> relies on it (and #defines ThrowInfo -> _ThrowInfo).
+// clang-cl does not pre-inject it, so provide the same typedef MSVC's ehdata.h uses.
+typedef const struct _s__ThrowInfo _ThrowInfo;
+#endif
+
 #include <windows.h>
 #include <rttidata.h>
 #include <CKPE.Application.h>

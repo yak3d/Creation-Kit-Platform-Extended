@@ -17,10 +17,10 @@ namespace CKPE
 		INT_PTR FormInfoOutputWindow::OpenModal(const HWND hParentWindow)
 		{
 			return DialogBox((HINSTANCE)Common::Interface::GetSingleton()->GetInstanceDLL(), 
-				MAKEINTRESOURCE(IDD_DIALOG1), hParentWindow, WndProc);
+				MAKEINTRESOURCE(IDD_DIALOG1), hParentWindow, DlgProc);
 		}
 
-		INT_PTR CALLBACK FormInfoOutputWindow::WndProc(HWND Hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
+		INT_PTR CALLBACK FormInfoOutputWindow::DlgProc(HWND Hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		{
 			switch (Message)
 			{

@@ -52,3 +52,8 @@ Offsets Transfer/backup/
 
 # JetBrains IDEs
 .idea
+
+# Linux cross-build (clang-cl + xwin) -- regenerable output only.
+# The source/recipe (linux-build/, cmake/) is intentionally NOT ignored.
+/build-linux/
+cmake-build-*/

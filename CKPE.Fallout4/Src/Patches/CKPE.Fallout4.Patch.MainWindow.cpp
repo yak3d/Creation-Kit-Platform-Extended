@@ -63,16 +63,19 @@ namespace CKPE
 			static HMENU ExtensionMenuHideFunctionsHandle = nullptr;
 			static char newMainWindowClass[250];
 
+			static void DumpExtraDataCallback(const char* fmt, ...)
+			{
+				va_list ap;
+				va_start(ap, fmt);
+				_CONSOLEVA(fmt, ap);
+				va_end(ap);
+			}
+
 			static void OutputRefrAdditionalInfo(EditorAPI::Forms::TESObjectREFR* Refr)
 			{
 				auto Extras = Refr->GetExtraData();
 				if (Extras)
-					Extras->Dump([](const char* fmt, ...) {
-						va_list ap;
-						va_start(ap, fmt);
-						_CONSOLEVA(fmt, ap);
-						va_end(ap);
-						});
+					Extras->Dump(DumpExtraDataCallback);
 			}
 
 			static void OutputFormInfo(std::uint32_t FormID) noexcept(true)

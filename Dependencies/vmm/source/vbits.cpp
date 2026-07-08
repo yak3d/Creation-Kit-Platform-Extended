@@ -59,7 +59,7 @@ namespace voltek
 			return *this;
 		}
 		// Установить все биты равно 1.
-		inline void bits::all_set() 
+		void bits::all_set()
 		{ 
 			if (_mem)
 			{
@@ -68,7 +68,7 @@ namespace voltek
 			}
 		}
 		// Установить все биты равно 0.
-		inline void bits::all_unset() 
+		void bits::all_unset()
 		{ 
 			if (_mem)
 			{
@@ -238,6 +238,11 @@ namespace voltek
 		}
 
 		// Поиск первого установленного бита AVX2 инструкциями
+#if defined(__clang__)
+		// clang gates AVX2 intrinsics behind the target feature; MSVC does not.
+		// This function is only called after a runtime avx2_supported check.
+		__attribute__((target("avx2")))
+#endif
 		bool bits::find_first_set_bit_avx2(size_t& index) const
 		{
 			uint64_t* u64p = (uint64_t*)_mem;
@@ -305,6 +310,11 @@ namespace voltek
 		}
 
 		// Поиск первого установленного бита SSE4.1 инструкциями
+#if defined(__clang__)
+		// clang gates SSE4.1 intrinsics behind the target feature; MSVC does not.
+		// This function is only called after a runtime sse41_supported check.
+		__attribute__((target("sse4.1")))
+#endif
 		bool bits::find_first_set_bit_sse41(size_t& index) const
 		{
 			uint64_t* u64p = (uint64_t*)_mem;

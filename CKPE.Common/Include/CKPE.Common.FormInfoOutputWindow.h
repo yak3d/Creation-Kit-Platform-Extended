@@ -17,7 +17,10 @@ namespace CKPE
 
 			INT_PTR OpenModal(const HWND hParentWindow);
 
-			static INT_PTR CALLBACK WndProc(HWND Hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
+			// Renamed from WndProc: this is a DLGPROC (returns INT_PTR), and a static
+			// member sharing the base's virtual WndProc name+params is an illegal
+			// override under clang (MSVC tolerates it). Behavior is unchanged.
+			static INT_PTR CALLBACK DlgProc(HWND Hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 		};
 	}
 }

@@ -1,0 +1,25 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "linux-xwin",
+      "displayName": "Linux xwin cross-build",
+      "description": "clang-cl + lld-link + llvm-rc against the xwin splat; builds the Windows PE artifacts on Linux.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../build-linux",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/../cmake/xwin-toolchain.cmake",
+        "XWIN_DIR": "$env{HOME}/.xwin",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-xwin",
+      "displayName": "Linux xwin cross-build",
+      "configurePreset": "linux-xwin"
+    }
+  ]
+}

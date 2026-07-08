@@ -390,6 +390,10 @@ namespace CKPE
 				return res;
 			}
 
+#if defined(__clang__)
+			// clang gates SSE4.1 intrinsics (_mm_cmpeq_epi64) behind the target feature; MSVC doesn't.
+			__attribute__((target("sse4.1")))
+#endif
 			std::uint32_t OptimizationLoad::HKSearchIndexOffset64(EditorAPI::BSTArray<std::uint64_t>& _array,
 				std::uint64_t& _target, std::uint32_t _start_index) noexcept(true)
 			{

@@ -229,7 +229,7 @@ namespace CKPE
 					}
 				}
 
-				static inline decltype(&HKDeleteTriangle) DeleteTriangle;
+				static inline void (NavMesh::*DeleteTriangle)(uint16_t) noexcept(true);
 			};
 
 			NavMeshPseudoDelete::NavMeshPseudoDelete() : Common::Patch()
